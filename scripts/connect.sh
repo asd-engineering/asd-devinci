@@ -13,6 +13,10 @@ _ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
 _ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST:-}"
 _ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT:-2223}"
 
+# Initialize workspace + generate .env from tpl.env macros
+# (creates Caddy ports via getRandomPort(), ASD_PROJECT_HOST, etc.)
+asd init --yes
+
 # Source .env for port if available (but don't export all, use specific vars)
 if [ -f ".env" ]; then
   # shellcheck disable=SC1091
