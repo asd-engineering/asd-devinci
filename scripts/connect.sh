@@ -119,7 +119,13 @@ set -a
 source .env
 set +a
 
-echo "Connecting tunnel: ${NAME} on port ${PORT} (direct mode)"
+# Determine service ID based on interface type
+SERVICE_ID="ttyd"
+if [ "${INTERFACE}" = "codeserver" ]; then
+  SERVICE_ID="codeserver"
+fi
+
+echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID})"
 
 # Connect tunnel
 if [ "${KEEP_ALIVE:-false}" = "true" ]; then
@@ -130,7 +136,7 @@ if [ "${KEEP_ALIVE:-false}" = "true" ]; then
     ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
     ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
     ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-    asd expose "${PORT}" "${NAME}" --direct
+    asd expose "${PORT}" "${NAME}" --service-id "${SERVICE_ID}"
 else
   # Background mode - connect and let workflow continue
   echo "Starting tunnel in background..."
@@ -143,7 +149,7 @@ else
     ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
     ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
     PATH="${PATH}" \
-    asd expose "${PORT}" "${NAME}" --direct > /tmp/tunnel.log 2>&1 &
+    asd expose "${PORT}" "${NAME}" --service-id "${SERVICE_ID}" > /tmp/tunnel.log 2>&1 &
   TUNNEL_PID=$!
 
   # Wait for tunnel to establish
