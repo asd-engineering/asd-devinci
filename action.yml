@@ -7,7 +7,13 @@ branding:
 inputs:
   asd-api-key:
     description: 'ASD API key for tunnel credential generation (use ${{ secrets.ASD_API_KEY }})'
-    required: true
+    required: false
+  client-id:
+    description: 'Pre-created tunnel client ID (recommended)'
+    required: false
+  client-secret:
+    description: 'Pre-created tunnel client secret / token (recommended)'
+    required: false
   username:
     description: 'Basic auth username for ttyd and code-server'
     required: true
@@ -72,6 +78,8 @@ runs:
       shell: bash
       env:
         ASD_API_KEY: ${{ inputs.asd-api-key }}
+        ASD_CLIENT_ID: ${{ inputs.client-id }}
+        ASD_CLIENT_SECRET: ${{ inputs.client-secret }}
         TUNNEL_NAME: ${{ inputs.tunnel-name }}
         TUNNEL_HOST: ${{ inputs.tunnel-host }}
         TUNNEL_PORT: ${{ inputs.tunnel-port }}

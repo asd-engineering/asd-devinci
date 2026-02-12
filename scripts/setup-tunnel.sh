@@ -10,23 +10,33 @@ echo "Setting up tunnel credentials..."
 echo "  Name: $NAME"
 echo "  Host: $TUNNEL_HOST"
 
-# Create ephemeral credentials via edge function
-RESPONSE=$(curl -sf "${ASD_ENDPOINT}/functions/v1/create-ephemeral-token" \
-  -H "Content-Type: application/json" \
-  -d "{\"source\": \"github-actions\", \"repo\": \"${GITHUB_REPOSITORY:-unknown}\"}")
+if [[ -n "${ASD_CLIENT_ID:-}" && -n "${ASD_CLIENT_SECRET:-}" ]]; then
+  echo "Using provided tunnel token credentials"
+else
+  if [[ -z "${ASD_API_KEY:-}" ]]; then
+    echo "Missing credentials: provide client-id/client-secret or asd-api-key"
+    exit 1
+  fi
 
-if [ -z "$RESPONSE" ]; then
-  echo "Failed to create ephemeral credentials"
-  exit 1
-fi
+  # Create ephemeral credentials via edge function
+  RESPONSE=$(curl -sf "${ASD_ENDPOINT}/functions/v1/create-ephemeral-token" \
+    -H "Authorization: Bearer ${ASD_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"source\": \"github-actions\", \"repo\": \"${GITHUB_REPOSITORY:-unknown}\"}")
 
-ASD_CLIENT_ID=$(echo "$RESPONSE" | jq -r '.tunnel_client_id')
-ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
+  if [ -z "$RESPONSE" ]; then
+    echo "Failed to create ephemeral credentials"
+    exit 1
+  fi
 
-if [ -z "$ASD_CLIENT_ID" ] || [ "$ASD_CLIENT_ID" = "null" ]; then
-  echo "Invalid response from API"
-  echo "$RESPONSE"
-  exit 1
+  ASD_CLIENT_ID=$(echo "$RESPONSE" | jq -r '.tunnel_client_id')
+  ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
+
+  if [ -z "$ASD_CLIENT_ID" ] || [ "$ASD_CLIENT_ID" = "null" ]; then
+    echo "Invalid response from API"
+    echo "$RESPONSE"
+    exit 1
+  fi
 fi
 
 # Export credentials to environment

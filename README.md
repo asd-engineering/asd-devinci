@@ -30,7 +30,8 @@ jobs:
 
       - uses: asd-engineering/asd-devinci@main
         with:
-          asd-api-key: ${{ secrets.ASD_API_KEY }}
+          client-id: ${{ secrets.ASD_CLIENT_ID }}
+          client-secret: ${{ secrets.ASD_CLIENT_SECRET }}
           username: ${{ inputs.username }}
           password: ${{ inputs.password }}
 ```
@@ -49,7 +50,9 @@ jobs:
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `asd-api-key` | Yes | - | ASD API key for tunnel credentials |
+| `client-id` | No | - | Pre-created tunnel client ID (recommended) |
+| `client-secret` | No | - | Pre-created tunnel client secret/token (recommended) |
+| `asd-api-key` | No | - | Fallback: create temporary credentials server-side |
 | `username` | Yes | - | Basic auth username |
 | `password` | Yes | - | Basic auth password |
 | `asd-version` | No | `latest` | ASD CLI version to install |
@@ -68,7 +71,9 @@ jobs:
 ## Requirements
 
 - Repository must have an `asd.yaml` configuration file
-- `ASD_API_KEY` secret configured in the repository
+- One credential mode must be configured:
+  - Recommended: `ASD_CLIENT_ID` + `ASD_CLIENT_SECRET` secrets
+  - Fallback: `ASD_API_KEY` secret
 - The `asd.yaml` must define an automation sequence (default: `dev`)
 
 ## How It Works
@@ -76,7 +81,7 @@ jobs:
 1. Sets up Node.js and pnpm
 2. Installs project dependencies via `pnpm install`
 3. Downloads and installs ASD CLI from GitHub releases
-4. Creates ephemeral tunnel credentials via ASD API
+4. Uses provided token credentials, or creates temporary credentials via API key fallback
 5. Sets authentication environment variables
 6. Runs your automation command (`asd run dev` by default)
 7. Displays access URLs via ASD Hub
