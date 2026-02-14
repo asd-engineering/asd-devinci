@@ -51,6 +51,18 @@ inputs:
     description: 'ASD API endpoint'
     default: 'https://api.asd.host'
 
+  client-id:
+    description: 'Pre-existing ASD client ID (skips provisioning if provided with client-secret)'
+    required: false
+
+  client-secret:
+    description: 'Pre-existing ASD client secret (required if client-id provided)'
+    required: false
+
+  direct:
+    description: 'Use --direct flag for asd expose (bypass Caddy proxy)'
+    default: 'false'
+
   keep-alive:
     description: 'Keep session alive after setup'
     default: 'false'
@@ -98,6 +110,8 @@ runs:
         ASD_TUNNEL_HOST: ${{ inputs.tunnel-host }}
         ASD_TUNNEL_PORT: ${{ inputs.tunnel-port }}
         TTL_MINUTES: ${{ inputs.ttl-minutes }}
+        INPUT_CLIENT_ID: ${{ inputs.client-id }}
+        INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
 
@@ -117,5 +131,6 @@ runs:
       run: ${{ github.action_path }}/scripts/connect.sh
       env:
         TUNNEL_NAME: ${{ inputs.tunnel-name }}
+        DIRECT_MODE: ${{ inputs.direct }}
         GITHUB_SHA: ${{ github.sha }}
         KEEP_ALIVE: ${{ inputs.keep-alive }}

@@ -12,6 +12,8 @@ _ASD_CLIENT_ID="${ASD_CLIENT_ID:-}"
 _ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
 _ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST:-}"
 _ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT:-}"
+_TUNNEL_OWNERSHIP="${TUNNEL_OWNERSHIP:-shared}"
+_DIRECT_MODE="${DIRECT_MODE:-false}"
 
 # Initialize workspace + generate .env from tpl.env macros
 # (creates Caddy ports via getRandomPort(), ASD_PROJECT_HOST, etc.)
@@ -35,6 +37,8 @@ ASD_CLIENT_ID="${_ASD_CLIENT_ID}"
 ASD_CLIENT_SECRET="${_ASD_CLIENT_SECRET}"
 ASD_TUNNEL_HOST="${_ASD_TUNNEL_HOST}"
 ASD_TUNNEL_PORT="${_ASD_TUNNEL_PORT}"
+TUNNEL_OWNERSHIP="${_TUNNEL_OWNERSHIP}"
+DIRECT_MODE="${_DIRECT_MODE}"
 
 # Validate required tunnel credentials
 if [ -z "$ASD_TUNNEL_HOST" ]; then
@@ -46,13 +50,19 @@ if [ -z "$ASD_TUNNEL_PORT" ]; then
   exit 1
 fi
 
-# Build URLs using the client ID from provision step
-TUNNEL_URL="https://${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}/"
+# Ownership-aware URL construction (ownership from provision.sh via GITHUB_ENV)
+if [ "$TUNNEL_OWNERSHIP" = "shared" ] && [ -n "$ASD_CLIENT_ID" ]; then
+  URL_HOST="${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}"
+else
+  URL_HOST="${NAME}.${ASD_TUNNEL_HOST}"
+fi
+
+TUNNEL_URL="https://${URL_HOST}/"
 
 # URL-encode credentials for embedding in URL
 ENCODED_USER=$(printf '%s' "${USERNAME}" | jq -sRr @uri)
 ENCODED_PASS=$(printf '%s' "${PASSWORD}" | jq -sRr @uri)
-FULL_URL="https://${ENCODED_USER}:${ENCODED_PASS}@${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}/"
+FULL_URL="https://${ENCODED_USER}:${ENCODED_PASS}@${URL_HOST}/"
 
 # Set outputs
 echo "url=${FULL_URL}" >> "$GITHUB_OUTPUT"
@@ -139,7 +149,13 @@ if [ "${INTERFACE}" = "codeserver" ]; then
   SERVICE_ID="codeserver"
 fi
 
-echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID})"
+# Build expose arguments
+EXPOSE_ARGS=("${PORT}" "${NAME}" "--name" "${SERVICE_ID}")
+if [ "${DIRECT_MODE:-false}" = "true" ]; then
+  EXPOSE_ARGS+=("--direct")
+fi
+
+echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID}, direct: ${DIRECT_MODE:-false})"
 
 # Connect tunnel
 if [ "${KEEP_ALIVE:-false}" = "true" ]; then
@@ -150,7 +166,7 @@ if [ "${KEEP_ALIVE:-false}" = "true" ]; then
     ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
     ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
     ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-    asd expose "${PORT}" "${NAME}" --service-id "${SERVICE_ID}"
+    asd expose "${EXPOSE_ARGS[@]}"
 else
   # Background mode - connect and let workflow continue
   echo "Starting tunnel in background..."
@@ -163,7 +179,7 @@ else
     ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
     ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
     PATH="${PATH}" \
-    asd expose "${PORT}" "${NAME}" --service-id "${SERVICE_ID}" > /tmp/tunnel.log 2>&1 &
+    asd expose "${EXPOSE_ARGS[@]}" > /tmp/tunnel.log 2>&1 &
   TUNNEL_PID=$!
 
   # Wait for tunnel to establish

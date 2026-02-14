@@ -5,7 +5,27 @@ ASD_ENDPOINT="${ASD_ENDPOINT:-https://api.asd.host}"
 
 echo "::group::Provisioning tunnel credentials"
 
-if [ -n "${ASD_API_KEY:-}" ]; then
+if [ -n "${INPUT_CLIENT_ID:-}" ] && [ -n "${INPUT_CLIENT_SECRET:-}" ]; then
+  # === PRE-EXISTING CREDENTIALS MODE ===
+  echo "Using provided client credentials (skipping provisioning)"
+  ASD_CLIENT_ID="$INPUT_CLIENT_ID"
+  ASD_CLIENT_SECRET="$INPUT_CLIENT_SECRET"
+  EXPIRES_AT="N/A (pre-existing)"
+  OWNERSHIP_TYPE="shared"
+
+  # tunnel-host and tunnel-port MUST be provided explicitly
+  if [ -z "${ASD_TUNNEL_HOST:-}" ]; then
+    echo "::error::tunnel-host required when using pre-existing credentials"
+    exit 1
+  fi
+  if [ -z "${ASD_TUNNEL_PORT:-}" ]; then
+    echo "::error::tunnel-port required when using pre-existing credentials"
+    exit 1
+  fi
+
+  echo "Using pre-existing credentials: client_id=${ASD_CLIENT_ID}"
+
+elif [ -n "${ASD_API_KEY:-}" ]; then
   # === API KEY MODE ===
   echo "Using API key authentication (credential-provision)"
 
@@ -44,6 +64,7 @@ if [ -n "${ASD_API_KEY:-}" ]; then
   ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.token')
   TUNNEL_USER_CLIENT_ID=$(echo "$RESPONSE" | jq -r '.client_id')
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
+  OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
 
   if [ "$ASD_CLIENT_ID" = "null" ] || [ -z "$ASD_CLIENT_ID" ]; then
     echo "::error::Invalid API response: missing tunnel_user"
@@ -96,6 +117,7 @@ else
   TUNNEL_HOST=$(echo "$RESPONSE" | jq -r '.tunnel_host')
   TUNNEL_PORT=$(echo "$RESPONSE" | jq -r '.tunnel_port')
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
+  OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
 
   if [ "$ASD_CLIENT_ID" = "null" ] || [ -z "$ASD_CLIENT_ID" ]; then
     echo "::error::Invalid ephemeral token response: missing tunnel_client_id"
@@ -103,7 +125,7 @@ else
     exit 1
   fi
 
-  # Override tunnel host/port from ephemeral response if provided
+  # Set tunnel host/port from ephemeral response
   if [ "$TUNNEL_HOST" != "null" ] && [ -n "$TUNNEL_HOST" ]; then
     echo "ASD_TUNNEL_HOST=${TUNNEL_HOST}" >> "$GITHUB_ENV"
   fi
@@ -117,6 +139,9 @@ fi
 # Export credentials to environment for subsequent steps
 echo "ASD_CLIENT_ID=${ASD_CLIENT_ID}" >> "$GITHUB_ENV"
 echo "ASD_CLIENT_SECRET=${ASD_CLIENT_SECRET}" >> "$GITHUB_ENV"
+
+# Export ownership type for connect.sh URL construction
+echo "TUNNEL_OWNERSHIP=${OWNERSHIP_TYPE}" >> "$GITHUB_ENV"
 
 # Set tunnel host/port if not already set by API response
 # Priority: explicit input > API response > fail

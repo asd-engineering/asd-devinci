@@ -10,7 +10,8 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
 - **VS Code (code-server)**: VS Code IDE in your browser
 - **Cloud Tunnel**: Instant public URL with embedded credentials
 - **Full ASD CLI**: All commands available (`asd net`, `asd caddy`, `asd expose`, etc.)
-- **Two Auth Modes**: API key (recommended) or ephemeral tokens
+- **Three Auth Modes**: Pre-existing credentials, API key, or ephemeral tokens
+- **Auto Server Discovery**: Tunnel host, port, and ownership fetched from API
 - **Cross-Platform**: Works on Linux, macOS, and Windows runners
 - **No SSH Keys**: Just click the URL to connect
 
@@ -34,6 +35,17 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
     ttl-minutes: 15
 ```
 
+### Pre-existing Credentials (from CLI)
+
+```yaml
+- uses: asd-engineering/asd-devinci@v1
+  with:
+    client-id: ${{ inputs.client-id }}
+    client-secret: ${{ inputs.client-secret }}
+    tunnel-host: ${{ inputs.tunnel-host }}
+    tunnel-port: ${{ inputs.tunnel-port }}
+```
+
 ### VS Code in Browser
 
 ```yaml
@@ -54,8 +66,11 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
 | `username` | Basic auth username | `asd` |
 | `password` | Basic auth password (auto-generated if empty) | - |
 | `tunnel-name` | Subdomain prefix | Short SHA |
-| `tunnel-host` | Tunnel server hostname | Auto-detected from API |
-| `tunnel-port` | Tunnel server SSH port | Auto-detected from API |
+| `tunnel-host` | Tunnel server hostname (auto-detected from API) | - |
+| `tunnel-port` | Tunnel server SSH port (auto-detected from API) | - |
+| `client-id` | Pre-existing ASD client ID (skips provisioning) | - |
+| `client-secret` | Pre-existing ASD client secret | - |
+| `direct` | Use `--direct` flag for asd expose | `false` |
 | `ttl-minutes` | Token TTL (5-60, API key mode only) | `15` |
 | `asd-version` | ASD CLI release tag | `latest` |
 | `api-endpoint` | ASD API endpoint | `https://api.asd.host` |
@@ -71,42 +86,39 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
 | `local-port` | Local service port |
 | `expires-at` | Token expiration (ISO 8601) |
 
-## Available in Session
-
-Once connected, you have access to:
-
-- **Full ASD CLI**: `asd net`, `asd caddy`, `asd expose`, `asd ttyd`, `asd code`
-- **Network Management**: Configure and manage services
-- **Tunnel Control**: Create additional tunnels on the fly
-- **All Development Tools**: Whatever you've installed on the runner
-
 ## Authentication Modes
 
-### API Key Mode (Recommended)
+### 1. Pre-existing Credentials (Fastest)
 
-Use an API key with `cicd:provision` scope for production workflows:
+When `client-id` and `client-secret` are provided, provisioning is skipped entirely. Requires `tunnel-host` and `tunnel-port` to be set explicitly. Used by `asd terminal` CLI which passes credentials from its local registry.
+
+### 2. API Key Mode (Recommended)
+
+Use an API key with `cicd:provision` scope. The API returns all server details (host, port, ownership) automatically.
 
 1. Create an API key at [asd.engineering/workspace/api-keys](https://asd.engineering/workspace/api-keys)
 2. Enable the `cicd:provision` scope
 3. Add to GitHub secrets as `ASD_API_KEY`
 
-Benefits:
-- Longer TTL (up to 60 minutes)
-- Project binding for audit trails
-- No rate limits
+### 3. Ephemeral Mode (No Setup)
 
-### Ephemeral Mode
-
-For quick debugging without setup, ephemeral mode works without any API key:
+For quick debugging without any configuration. Limited TTL and rate limited.
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
 ```
 
-Limitations:
-- Shorter TTL (default 15 minutes)
-- Rate limited (10 tokens/hour per IP)
-- Limited features
+## Server Discovery
+
+Tunnel server details are resolved automatically:
+
+- **API key mode**: `credential-provision` returns `tunnel_host`, `tunnel_port`, `ownership_type`
+- **Ephemeral mode**: `create-ephemeral-token` returns the same fields
+- **Pre-existing**: Must provide `tunnel-host` and `tunnel-port` explicitly
+
+URL construction adapts to ownership type:
+- **Shared**: `https://{name}-{client-id}.{host}/`
+- **Dedicated/Self-hosted**: `https://{name}.{host}/`
 
 ## Examples
 
