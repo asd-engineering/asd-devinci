@@ -19,10 +19,10 @@ echo "SESSION_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
 echo "SESSION_USERNAME=${SESSION_USERNAME}" >> "$GITHUB_ENV"
 echo "SESSION_SHELL=${SESSION_SHELL}" >> "$GITHUB_ENV"
 
-# Also export ttyd-specific names for compatibility with ASD CLI
-echo "TTYD_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
-echo "TTYD_USERNAME=${SESSION_USERNAME}" >> "$GITHUB_ENV"
-echo "TTYD_SHELL_CMD=${SESSION_SHELL}" >> "$GITHUB_ENV"
+# Also export ASD ttyd env vars for ASD CLI
+echo "ASD_TTYD_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
+echo "ASD_TTYD_USERNAME=${SESSION_USERNAME}" >> "$GITHUB_ENV"
+echo "ASD_TTYD_SHELL_CMD=${SESSION_SHELL}" >> "$GITHUB_ENV"
 
 # Initialize ASD workspace (creates workspace directory, .env file)
 export ASD_NON_INTERACTIVE=1
@@ -68,16 +68,16 @@ else
 fi
 
 # Ensure env vars are set
-export TTYD_USERNAME="${SESSION_USERNAME}"
-export TTYD_PASSWORD="${SESSION_PASSWORD}"
-export TTYD_SHELL_CMD="${SESSION_SHELL}"
+export ASD_TTYD_USERNAME="${SESSION_USERNAME}"
+export ASD_TTYD_PASSWORD="${SESSION_PASSWORD}"
+export ASD_TTYD_SHELL_CMD="${SESSION_SHELL}"
 export ASD_WORKSPACE_DIR="${ASD_WORKSPACE_DIR:-${WORKSPACE_DIR}}"
 
 # Write to .env for ASD commands
 cat >> ".env" << EOF
-TTYD_USERNAME=${TTYD_USERNAME}
-TTYD_PASSWORD=${TTYD_PASSWORD}
-TTYD_SHELL_CMD=${TTYD_SHELL_CMD}
+ASD_TTYD_USERNAME=${ASD_TTYD_USERNAME}
+ASD_TTYD_PASSWORD=${ASD_TTYD_PASSWORD}
+ASD_TTYD_SHELL_CMD=${ASD_TTYD_SHELL_CMD}
 ASD_WORKSPACE_DIR=${ASD_WORKSPACE_DIR}
 EOF
 
@@ -120,13 +120,13 @@ else
     source .env || true
     set +a
   fi
-  PORT="${TTYD_PORT:-7681}"
+  PORT="${ASD_TTYD_PORT:-7681}"
   echo "ttyd started on port ${PORT}"
 fi
 
 # Export port to GITHUB_ENV
 echo "SESSION_PORT=${PORT}" >> "$GITHUB_ENV"
-echo "TTYD_PORT=${PORT}" >> "$GITHUB_ENV"
+echo "ASD_TTYD_PORT=${PORT}" >> "$GITHUB_ENV"
 
 # Set output
 echo "port=${PORT}" >> "$GITHUB_OUTPUT"

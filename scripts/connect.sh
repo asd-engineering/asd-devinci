@@ -25,12 +25,12 @@ if [ -f ".env" ]; then
   source .env || true
 fi
 
-# Get the port (prefer SESSION_PORT, fallback to TTYD_PORT)
-PORT="${SESSION_PORT:-${TTYD_PORT:-7681}}"
+# Get the port (prefer SESSION_PORT, fallback to ASD_TTYD_PORT)
+PORT="${SESSION_PORT:-${ASD_TTYD_PORT:-7681}}"
 
-# Get credentials (prefer SESSION_*, fallback to TTYD_*)
-USERNAME="${SESSION_USERNAME:-${TTYD_USERNAME:-asd}}"
-PASSWORD="${SESSION_PASSWORD:-${TTYD_PASSWORD:-}}"
+# Get credentials (prefer SESSION_*, fallback to ASD_TTYD_*)
+USERNAME="${SESSION_USERNAME:-${ASD_TTYD_USERNAME:-asd}}"
+PASSWORD="${SESSION_PASSWORD:-${ASD_TTYD_PASSWORD:-}}"
 
 # Restore tunnel credentials (use saved values, not .env values)
 ASD_CLIENT_ID="${_ASD_CLIENT_ID}"
