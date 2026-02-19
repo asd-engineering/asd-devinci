@@ -126,7 +126,6 @@ echo ""
 
 # T1: Cleanup handler for workflow cancellation
 DEPLOY_ID=""
-EXPOSE_PID=""
 cleanup() {
   echo ""
   echo "ASD DevInCi cleanup..."
@@ -141,11 +140,8 @@ cleanup() {
     echo "Deployment marked inactive"
   fi
 
-  # Kill tunnel process
-  if [ -n "$EXPOSE_PID" ] && kill -0 "$EXPOSE_PID" 2>/dev/null; then
-    kill "$EXPOSE_PID" 2>/dev/null || true
-    echo "Tunnel process stopped"
-  fi
+  # Stop any tunnel processes started by asd expose
+  asd expose stop --all 2>/dev/null || true
 
   # Remove .env with secrets
   rm -f .env 2>/dev/null || true
@@ -175,7 +171,7 @@ if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
       -H "Accept: application/vnd.github+json" \
       "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" \
       -d "{
-        \"state\": \"in_progress\",
+        \"state\": \"success\",
         \"environment_url\": \"${TUNNEL_URL}\",
         \"description\": \"ASD DevInCi session ready\"
       }" > /dev/null 2>&1 || true
@@ -223,18 +219,13 @@ fi
 
 echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID})"
 
-# U1: Expose the service via tunnel with better error context
-env \
+# Expose the service via tunnel (asd expose sets up tunnel and returns)
+if ! env \
   ASD_CLIENT_ID="${ASD_CLIENT_ID}" \
   ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
   ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
   ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-  asd expose "${EXPOSE_ARGS[@]}" &
-EXPOSE_PID=$!
-
-# Give the tunnel a moment to start or fail
-sleep 2
-if ! kill -0 "$EXPOSE_PID" 2>/dev/null; then
+  asd expose "${EXPOSE_ARGS[@]}"; then
   echo "::error::Tunnel connection failed"
   echo "  Host: ${ASD_TUNNEL_HOST}:${ASD_TUNNEL_PORT}"
   echo "  Client ID: ${ASD_CLIENT_ID}"
@@ -248,16 +239,10 @@ echo ""
 echo "Session active. Cancel the workflow run to terminate."
 echo ""
 
-# T2: Keep alive with health checks
+# Keep alive with health checks
 HEALTH_FAILURES=0
 while true; do
   sleep 60
-
-  # Check if tunnel process is still alive
-  if ! kill -0 "$EXPOSE_PID" 2>/dev/null; then
-    echo "::error::Tunnel process died"
-    exit 1
-  fi
 
   # Health-check local service
   if curl -sf -o /dev/null "http://localhost:${PORT}/" 2>/dev/null; then
