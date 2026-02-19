@@ -71,10 +71,9 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
 | `client-id` | Pre-existing ASD client ID (skips provisioning) | - |
 | `client-secret` | Pre-existing ASD client secret | - |
 | `direct` | Use `--direct` flag for asd expose | `false` |
-| `ttl-minutes` | Token TTL (5-60, API key mode only) | `15` |
+| `ttl-minutes` | Token TTL in minutes (0 = no expiry, API key mode only) | `0` |
 | `asd-version` | ASD CLI release tag | `latest` |
 | `api-endpoint` | ASD API endpoint | `https://api.asd.host` |
-| `keep-alive` | Keep session alive after setup | `false` |
 
 ## Outputs
 
@@ -96,7 +95,7 @@ When `client-id` and `client-secret` are provided, provisioning is skipped entir
 
 Use an API key with `cicd:provision` scope. The API returns all server details (host, port, ownership) automatically.
 
-1. Create an API key at [asd.engineering/workspace/api-keys](https://asd.engineering/workspace/api-keys)
+1. Create an API key at [asd.host/workspace/api-keys](https://asd.host/workspace/api-keys)
 2. Enable the `cicd:provision` scope
 3. Add to GitHub secrets as `ASD_API_KEY`
 
@@ -147,13 +146,6 @@ jobs:
         with:
           api-key: ${{ secrets.ASD_API_KEY }}
           tunnel-name: debug-${{ github.run_id }}
-          keep-alive: true
-
-      - name: Keep alive for debugging
-        if: steps.tests.outcome == 'failure'
-        run: |
-          echo "Debug session available for 6 hours"
-          sleep 21600
 ```
 
 ### Interactive Development with VS Code
@@ -184,7 +176,6 @@ jobs:
           interface: codeserver
           tunnel-name: dev-${{ github.actor }}
           ttl-minutes: ${{ github.event.inputs.ttl }}
-          keep-alive: true
 ```
 
 ### Windows PowerShell Session
@@ -200,7 +191,7 @@ jobs:
 
 - Credentials are embedded in the URL for one-click access
 - URLs use HTTPS with TLS encryption
-- Tokens are short-lived (configurable TTL)
+- Tokens have configurable TTL (ephemeral mode uses short-lived tokens)
 - Basic auth protects the endpoint
 - All secrets are masked in logs
 
@@ -272,6 +263,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
-- [ASD Engineering](https://asd.engineering)
-- [Documentation](https://asd.engineering/docs)
-- [API Key Management](https://asd.engineering/workspace/api-keys)
+- [ASD](https://asd.host)
+- [Documentation](https://asd.host/docs)
+- [API Key Management](https://asd.host/workspace/api-keys)

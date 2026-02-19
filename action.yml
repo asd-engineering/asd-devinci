@@ -39,6 +39,10 @@ inputs:
     description: 'Tunnel server SSH port (auto-detected from API response)'
     default: ''
 
+  region:
+    description: 'Preferred tunnel server region (e.g. eu-west, us-east). Auto-detected from user preferences if not set.'
+    required: false
+
   ttl-minutes:
     description: 'Token TTL in minutes (0 = no expiry, API key mode only)'
     default: '0'
@@ -106,6 +110,7 @@ runs:
         ASD_TUNNEL_HOST: ${{ inputs.tunnel-host }}
         ASD_TUNNEL_PORT: ${{ inputs.tunnel-port }}
         TTL_MINUTES: ${{ inputs.ttl-minutes }}
+        REGION: ${{ inputs.region }}
         INPUT_CLIENT_ID: ${{ inputs.client-id }}
         INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
         GITHUB_REPOSITORY: ${{ github.repository }}
