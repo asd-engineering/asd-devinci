@@ -66,6 +66,7 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
   ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
   OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
+  APPEND_USER=$(echo "$RESPONSE" | jq -r '.append_user_to_subdomain // empty')
 
   if [ "$ASD_CLIENT_ID" = "null" ] || [ -z "$ASD_CLIENT_ID" ]; then
     echo "::error::Invalid API response: missing tunnel_client_id"
@@ -119,6 +120,7 @@ else
   ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
   OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
+  APPEND_USER=$(echo "$RESPONSE" | jq -r '.append_user_to_subdomain // empty')
 
   if [ "$ASD_CLIENT_ID" = "null" ] || [ -z "$ASD_CLIENT_ID" ]; then
     echo "::error::Invalid response: missing tunnel_client_id"
@@ -154,6 +156,7 @@ echo "ASD_CLIENT_SECRET=${ASD_CLIENT_SECRET}" >> "$GITHUB_ENV"
 echo "ASD_TUNNEL_HOST=${ASD_TUNNEL_HOST}" >> "$GITHUB_ENV"
 echo "ASD_TUNNEL_PORT=${ASD_TUNNEL_PORT}" >> "$GITHUB_ENV"
 echo "TUNNEL_OWNERSHIP=${OWNERSHIP_TYPE}" >> "$GITHUB_ENV"
+echo "APPEND_USER_TO_SUBDOMAIN=${APPEND_USER:-true}" >> "$GITHUB_ENV"
 echo "ASD_EXPIRES_AT=${EXPIRES_AT}" >> "$GITHUB_ENV"
 
 # Export API key for in-session ASD CLI use (e.g. asd auth, asd net apply)

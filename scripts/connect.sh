@@ -12,7 +12,7 @@ _ASD_CLIENT_ID="${ASD_CLIENT_ID:-}"
 _ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
 _ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST:-}"
 _ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT:-}"
-_TUNNEL_OWNERSHIP="${TUNNEL_OWNERSHIP:-shared}"
+_APPEND_USER_TO_SUBDOMAIN="${APPEND_USER_TO_SUBDOMAIN:-true}"
 _DIRECT_MODE="${DIRECT_MODE:-false}"
 
 # Initialize workspace + generate .env from tpl.env macros
@@ -36,7 +36,7 @@ ASD_CLIENT_ID="${_ASD_CLIENT_ID}"
 ASD_CLIENT_SECRET="${_ASD_CLIENT_SECRET}"
 ASD_TUNNEL_HOST="${_ASD_TUNNEL_HOST}"
 ASD_TUNNEL_PORT="${_ASD_TUNNEL_PORT}"
-TUNNEL_OWNERSHIP="${_TUNNEL_OWNERSHIP}"
+APPEND_USER_TO_SUBDOMAIN="${_APPEND_USER_TO_SUBDOMAIN}"
 DIRECT_MODE="${_DIRECT_MODE}"
 
 # Validate required tunnel credentials
@@ -49,8 +49,8 @@ if [ -z "$ASD_TUNNEL_PORT" ]; then
   exit 1
 fi
 
-# Ownership-aware URL construction
-if [ "$TUNNEL_OWNERSHIP" = "shared" ] && [ -n "$ASD_CLIENT_ID" ]; then
+# URL construction based on append_user_to_subdomain flag from server registry
+if [ "$APPEND_USER_TO_SUBDOMAIN" = "true" ] && [ -n "$ASD_CLIENT_ID" ]; then
   URL_HOST="${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}"
 else
   URL_HOST="${NAME}.${ASD_TUNNEL_HOST}"
