@@ -187,13 +187,17 @@ export ASD_CLIENT_ID="${ASD_CLIENT_ID}"
 export ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}"
 export ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}"
 export ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}"
+export ASD_BASIC_AUTH_USERNAME="${USERNAME}"
+export ASD_BASIC_AUTH_PASSWORD="${PASSWORD}"
 
-# Write to .env for the asd command
+# Write to .env for the asd command (tunnel creds + basic auth for Caddy)
 cat >> ".env" << EOF
 ASD_CLIENT_ID=${ASD_CLIENT_ID}
 ASD_CLIENT_SECRET=${ASD_CLIENT_SECRET}
 ASD_TUNNEL_HOST=${ASD_TUNNEL_HOST}
 ASD_TUNNEL_PORT=${ASD_TUNNEL_PORT}
+ASD_BASIC_AUTH_USERNAME=${USERNAME}
+ASD_BASIC_AUTH_PASSWORD=${PASSWORD}
 EOF
 
 # S3: Restrict .env file permissions after writing secrets
