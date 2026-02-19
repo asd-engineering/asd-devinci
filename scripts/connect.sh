@@ -108,6 +108,38 @@ echo ""
 echo "=============================================="
 echo ""
 
+# Create GitHub deployment with tunnel URL for immediate visibility
+if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  echo "Creating GitHub deployment..."
+  DEPLOY_ID=$(curl -sf -X POST \
+    -H "Authorization: token ${GITHUB_TOKEN}" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments" \
+    -d "{
+      \"ref\": \"${GITHUB_SHA:-HEAD}\",
+      \"environment\": \"devinci\",
+      \"description\": \"DevInCi ${INTERFACE} session\",
+      \"auto_merge\": false,
+      \"required_contexts\": []
+    }" | jq -r '.id' 2>/dev/null) || true
+
+  if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
+    curl -sf -X POST \
+      -H "Authorization: token ${GITHUB_TOKEN}" \
+      -H "Accept: application/vnd.github+json" \
+      "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" \
+      -d "{
+        \"state\": \"in_progress\",
+        \"environment_url\": \"${TUNNEL_URL}\",
+        \"description\": \"DevInCi session ready\"
+      }" > /dev/null 2>&1 || true
+    echo "DEPLOY_ID=${DEPLOY_ID}" >> "$GITHUB_ENV"
+    echo "Deployment created: View deployment button now visible"
+  else
+    echo "::warning::Could not create deployment (check permissions)"
+  fi
+fi
+
 # Ensure required env vars are available for asd expose
 export ASD_CLIENT_ID="${ASD_CLIENT_ID}"
 export ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}"
