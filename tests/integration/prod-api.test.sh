@@ -39,7 +39,7 @@ test_api_key_provision() {
   fi
 
   RESPONSE=$(curl -sf "${ASD_ENDPOINT}/functions/v1/credential-provision" \
-    -H "Authorization: Bearer ${ASD_TEST_API_KEY}" \
+    -H "X-API-Key: ${ASD_TEST_API_KEY}" \
     -H "Content-Type: application/json" \
     -d '{"project": "github-action-test", "environment": "ci", "ttl_minutes": 5}' 2>&1) || {
     report_result "API key provisioning" "FAIL" "curl failed: $RESPONSE"
@@ -107,7 +107,7 @@ test_invalid_api_key() {
 
   HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
     "${ASD_ENDPOINT}/functions/v1/credential-provision" \
-    -H "Authorization: Bearer invalid-key-12345-not-real" \
+    -H "X-API-Key: invalid-key-12345-not-real" \
     -H "Content-Type: application/json" \
     -d '{"project": "test"}' \
     --max-time 10 2>/dev/null) || {
@@ -174,7 +174,7 @@ test_missing_scope() {
 
   HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
     "${ASD_ENDPOINT}/functions/v1/credential-provision" \
-    -H "Authorization: Bearer ${ASD_TEST_API_KEY_NO_SCOPE}" \
+    -H "X-API-Key: ${ASD_TEST_API_KEY_NO_SCOPE}" \
     -H "Content-Type: application/json" \
     -d '{"project": "test"}' \
     --max-time 10 2>/dev/null) || {

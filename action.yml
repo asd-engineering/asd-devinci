@@ -1,5 +1,5 @@
-name: 'DevInCi'
-description: 'Dev in CI - Full development environment inside CI/CD runners with web terminal, VS Code, tunnels, and complete ASD CLI access'
+name: 'ASD DevInCi'
+description: 'ASD DevInCi - Full development environment inside CI/CD runners with web terminal, VS Code, tunnels, and complete ASD CLI access'
 author: 'ASD Engineering (Accelerated Software Development B.V.)'
 
 branding:

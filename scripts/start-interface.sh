@@ -2,7 +2,7 @@
 set -euo pipefail
 
 INTERFACE="${INTERFACE_TYPE:-ttyd}"
-echo "::group::Starting DevInCi (${INTERFACE})"
+echo "::group::Starting ASD DevInCi (${INTERFACE})"
 
 # Generate password if not provided
 if [ -z "${SESSION_PASSWORD:-}" ]; then
@@ -54,8 +54,9 @@ mkdir -p "$WORKSPACE_DIR"
 # Try asd init first
 if asd init --yes 2>/dev/null; then
   echo "Workspace initialized via asd init"
-  # Source .env if it exists
+  # Restrict .env permissions before writing secrets
   if [ -f ".env" ]; then
+    chmod 600 .env
     set -a
     # shellcheck disable=SC1091
     source .env
@@ -80,6 +81,7 @@ ASD_TTYD_PASSWORD=${ASD_TTYD_PASSWORD}
 ASD_TTYD_SHELL_CMD=${ASD_TTYD_SHELL_CMD}
 ASD_WORKSPACE_DIR=${ASD_WORKSPACE_DIR}
 EOF
+chmod 600 .env
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   # Start code-server
@@ -145,7 +147,7 @@ for i in {1..10}; do
 done
 
 echo ""
-echo "DevInCi ready:"
+echo "ASD DevInCi ready:"
 echo "  Interface: ${INTERFACE}"
 echo "  Port: ${PORT}"
 echo "  Username: ${SESSION_USERNAME}"

@@ -3,9 +3,23 @@ set -euo pipefail
 
 ASD_ENDPOINT="${ASD_ENDPOINT:-https://api.asd.host}"
 
+# Mask API key early to prevent leaking in logs
+if [ -n "${ASD_API_KEY:-}" ]; then
+  echo "::add-mask::${ASD_API_KEY}"
+fi
+if [ -n "${INPUT_CLIENT_SECRET:-}" ]; then
+  echo "::add-mask::${INPUT_CLIENT_SECRET}"
+fi
+
 # Normalize special region values to empty (let API decide)
 if [ "${REGION:-}" = "User Default" ] || [ "${REGION:-}" = "default" ]; then
   REGION=""
+fi
+
+# Validate region for safe JSON interpolation
+if [ -n "${REGION:-}" ] && [[ ! "$REGION" =~ ^[a-z0-9-]*$ ]]; then
+  echo "::error::Invalid region '${REGION}'. Must be lowercase alphanumeric with hyphens."
+  exit 1
 fi
 
 echo "::group::Provisioning tunnel credentials"
@@ -16,6 +30,7 @@ if [ -n "${INPUT_CLIENT_ID:-}" ] && [ -n "${INPUT_CLIENT_SECRET:-}" ]; then
   echo "Using provided client credentials (skipping provisioning)"
   ASD_CLIENT_ID="$INPUT_CLIENT_ID"
   ASD_CLIENT_SECRET="$INPUT_CLIENT_SECRET"
+  echo "::add-mask::${ASD_CLIENT_SECRET}"
   EXPIRES_AT="N/A (pre-existing)"
   OWNERSHIP_TYPE="shared"
 
@@ -58,6 +73,12 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
     exit 1
   fi
 
+  # Validate response is JSON
+  if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+    echo "::error::API returned invalid JSON. Response: ${RESPONSE:0:200}"
+    exit 1
+  fi
+
   # Check for error in response
   ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error // empty' 2>/dev/null || echo "")
   if [ -n "$ERROR_MSG" ]; then
@@ -69,6 +90,7 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
   # Parse response
   ASD_CLIENT_ID=$(echo "$RESPONSE" | jq -r '.tunnel_client_id')
   ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
+  echo "::add-mask::${ASD_CLIENT_SECRET}"
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
   OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
   APPEND_USER=$(echo "$RESPONSE" | jq -r '.append_user_to_subdomain // empty')
@@ -112,6 +134,12 @@ else
     exit 1
   fi
 
+  # Validate response is JSON
+  if ! echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+    echo "::error::API returned invalid JSON. Response: ${RESPONSE:0:200}"
+    exit 1
+  fi
+
   # Check for error in response
   ERROR_MSG=$(echo "$RESPONSE" | jq -r '.error // empty' 2>/dev/null || echo "")
   if [ -n "$ERROR_MSG" ]; then
@@ -123,6 +151,7 @@ else
   # Parse response
   ASD_CLIENT_ID=$(echo "$RESPONSE" | jq -r '.tunnel_client_id')
   ASD_CLIENT_SECRET=$(echo "$RESPONSE" | jq -r '.tunnel_client_secret')
+  echo "::add-mask::${ASD_CLIENT_SECRET}"
   EXPIRES_AT=$(echo "$RESPONSE" | jq -r '.expires_at')
   OWNERSHIP_TYPE=$(echo "$RESPONSE" | jq -r '.ownership_type // "shared"')
   APPEND_USER=$(echo "$RESPONSE" | jq -r '.append_user_to_subdomain // empty')
@@ -172,9 +201,6 @@ fi
 # Set outputs for subsequent steps
 echo "client_id=${ASD_CLIENT_ID}" >> "$GITHUB_OUTPUT"
 echo "expires_at=${EXPIRES_AT}" >> "$GITHUB_OUTPUT"
-
-# Mask the secret from logs
-echo "::add-mask::${ASD_CLIENT_SECRET}"
 
 echo "Tunnel: ${ASD_TUNNEL_HOST}:${ASD_TUNNEL_PORT}"
 echo "::endgroup::"
