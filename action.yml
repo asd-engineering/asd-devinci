@@ -8,7 +8,7 @@ branding:
 
 inputs:
   api-key:
-    description: 'ASD API key (exported to session for CLI use)'
+    description: 'ASD API key with cicd:provision scope (provisions long-lived credentials)'
     required: false
 
   interface:
@@ -32,12 +32,16 @@ inputs:
     required: false
 
   tunnel-host:
-    description: 'Tunnel server hostname (auto-detected from API, falls back to cicd.eu1.asd.engineer)'
+    description: 'Tunnel server hostname (auto-detected from API response)'
     default: ''
 
   tunnel-port:
-    description: 'Tunnel server SSH port (auto-detected from API, falls back to 2223)'
+    description: 'Tunnel server SSH port (auto-detected from API response)'
     default: ''
+
+  ttl-minutes:
+    description: 'Token TTL in minutes (0 = no expiry, API key mode only)'
+    default: '0'
 
   asd-version:
     description: 'ASD CLI release tag'
@@ -105,6 +109,7 @@ runs:
         ASD_ENDPOINT: ${{ inputs.api-endpoint }}
         ASD_TUNNEL_HOST: ${{ inputs.tunnel-host }}
         ASD_TUNNEL_PORT: ${{ inputs.tunnel-port }}
+        TTL_MINUTES: ${{ inputs.ttl-minutes }}
         INPUT_CLIENT_ID: ${{ inputs.client-id }}
         INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
         GITHUB_REPOSITORY: ${{ github.repository }}
