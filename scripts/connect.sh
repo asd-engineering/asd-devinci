@@ -16,10 +16,9 @@ _TUNNEL_OWNERSHIP="${TUNNEL_OWNERSHIP:-shared}"
 _DIRECT_MODE="${DIRECT_MODE:-false}"
 
 # Initialize workspace + generate .env from tpl.env macros
-# (creates Caddy ports via getRandomPort(), ASD_PROJECT_HOST, etc.)
 asd init --yes
 
-# Source .env for port if available (but don't export all, use specific vars)
+# Source .env for port if available
 if [ -f ".env" ]; then
   # shellcheck disable=SC1091
   source .env || true
@@ -50,7 +49,7 @@ if [ -z "$ASD_TUNNEL_PORT" ]; then
   exit 1
 fi
 
-# Ownership-aware URL construction (ownership from provision.sh via GITHUB_ENV)
+# Ownership-aware URL construction
 if [ "$TUNNEL_OWNERSHIP" = "shared" ] && [ -n "$ASD_CLIENT_ID" ]; then
   URL_HOST="${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}"
 else
@@ -67,10 +66,6 @@ FULL_URL="https://${ENCODED_USER}:${ENCODED_PASS}@${URL_HOST}/"
 # Set outputs
 echo "url=${FULL_URL}" >> "$GITHUB_OUTPUT"
 echo "url_base=${TUNNEL_URL}" >> "$GITHUB_OUTPUT"
-
-# Export for keep-alive step
-echo "TUNNEL_URL=${TUNNEL_URL}" >> "$GITHUB_ENV"
-echo "TUNNEL_FULL_URL=${FULL_URL}" >> "$GITHUB_ENV"
 
 # Expire time from provision step
 EXPIRES_AT="${ASD_EXPIRES_AT:-unknown}"
@@ -95,13 +90,8 @@ cat >> "$GITHUB_STEP_SUMMARY" << EOF
 
 > Credentials embedded in URL - just click to access!
 
-**Available in this session:**
-- Full ASD CLI (\`asd net\`, \`asd caddy\`, \`asd expose\`, etc.)
-- Network management and tunnels
-- All development tools
-
 ---
-*Powered by [DevInCi](https://asd.engineering) - Dev in CI by ASD*
+*Powered by [DevInCi](https://asd.host) - Dev in CI by ASD*
 EOF
 
 echo ""
@@ -124,12 +114,7 @@ export ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}"
 export ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}"
 export ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}"
 
-# Debug: print env vars
-echo "Debug: ASD_TUNNEL_HOST=${ASD_TUNNEL_HOST}"
-echo "Debug: ASD_TUNNEL_PORT=${ASD_TUNNEL_PORT}"
-echo "Debug: ASD_CLIENT_ID=${ASD_CLIENT_ID}"
-
-# Write to .env for the asd command (BEFORE running the command)
+# Write to .env for the asd command
 cat >> ".env" << EOF
 ASD_CLIENT_ID=${ASD_CLIENT_ID}
 ASD_CLIENT_SECRET=${ASD_CLIENT_SECRET}
@@ -137,7 +122,7 @@ ASD_TUNNEL_HOST=${ASD_TUNNEL_HOST}
 ASD_TUNNEL_PORT=${ASD_TUNNEL_PORT}
 EOF
 
-# Source the updated .env to ensure all variables are in current shell
+# Source the updated .env
 set -a
 # shellcheck disable=SC1091
 source .env
@@ -155,59 +140,24 @@ if [ "${DIRECT_MODE:-false}" = "true" ]; then
   EXPOSE_ARGS+=("--direct")
 fi
 
-echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID}, direct: ${DIRECT_MODE:-false})"
+echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID})"
 
-# Connect tunnel
-if [ "${KEEP_ALIVE:-false}" = "true" ]; then
-  # Foreground mode - keeps workflow alive
-  echo "Running tunnel in foreground (keep-alive mode)..."
-  env \
-    ASD_CLIENT_ID="${ASD_CLIENT_ID}" \
-    ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
-    ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
-    ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-    asd expose "${EXPOSE_ARGS[@]}"
-else
-  # Background mode - connect and let workflow continue
-  echo "Starting tunnel in background..."
-
-  # Run tunnel connection in background with explicit env vars
-  # (nohup can lose environment in some shells)
-  nohup env \
-    ASD_CLIENT_ID="${ASD_CLIENT_ID}" \
-    ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
-    ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
-    ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-    PATH="${PATH}" \
-    asd expose "${EXPOSE_ARGS[@]}" > /tmp/tunnel.log 2>&1 &
-  TUNNEL_PID=$!
-
-  # Wait for tunnel to establish
-  echo "Waiting for tunnel to establish..."
-  for i in {1..30}; do
-    # Check if tunnel process is still running
-    if ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
-      echo "::error::Tunnel process exited unexpectedly"
-      cat /tmp/tunnel.log || true
-      exit 1
-    fi
-
-    # Try to reach the tunnel URL
-    if curl -sf "${TUNNEL_URL}" -o /dev/null --max-time 5 2>/dev/null; then
-      echo "Tunnel established successfully"
-      break
-    fi
-
-    if [ "$i" -eq 30 ]; then
-      echo "::warning::Tunnel may not be fully ready yet (timeout waiting for response)"
-      echo "Tunnel log:"
-      cat /tmp/tunnel.log || true
-    fi
-
-    sleep 2
-  done
-
-  echo "Tunnel running in background (PID: ${TUNNEL_PID})"
-fi
+# Expose the service via tunnel
+env \
+  ASD_CLIENT_ID="${ASD_CLIENT_ID}" \
+  ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
+  ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
+  ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
+  asd expose "${EXPOSE_ARGS[@]}"
 
 echo "::endgroup::"
+
+echo ""
+echo "Session active. Cancel the workflow run to terminate."
+echo ""
+
+# Keep the workflow alive until cancelled (asd expose returns immediately)
+while true; do
+  sleep 60
+  echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC'): session active"
+done

@@ -63,10 +63,6 @@ inputs:
     description: 'Use --direct flag for asd expose (bypass Caddy proxy)'
     default: 'false'
 
-  keep-alive:
-    description: 'Keep session alive after setup'
-    default: 'false'
-
 outputs:
   url:
     description: 'Session URL with embedded credentials'
@@ -133,4 +129,3 @@ runs:
         TUNNEL_NAME: ${{ inputs.tunnel-name }}
         DIRECT_MODE: ${{ inputs.direct }}
         GITHUB_SHA: ${{ github.sha }}
-        KEEP_ALIVE: ${{ inputs.keep-alive }}
