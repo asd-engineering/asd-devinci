@@ -40,7 +40,7 @@ inputs:
     default: ''
 
   region:
-    description: 'Preferred tunnel server region (e.g. eu-west, us-east). Auto-detected from user preferences if not set.'
+    description: 'Tunnel server region: eu-west (default), eu-central, us-east, us-west. Auto-detected from user preferences if not set.'
     required: false
 
   ttl-minutes:
