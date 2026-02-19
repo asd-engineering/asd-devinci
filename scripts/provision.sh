@@ -37,6 +37,7 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
     -d "{
       \"project\": \"${GITHUB_REPOSITORY}\",
       \"ttl_minutes\": ${TTL_MINUTES:-0},
+      $([ -n "${REGION:-}" ] && printf '\"region\": \"%s\",' "$REGION")
       \"metadata\": {
         \"github_run_id\": \"${GITHUB_RUN_ID}\",
         \"github_repository\": \"${GITHUB_REPOSITORY}\"
