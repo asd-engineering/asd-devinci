@@ -132,5 +132,6 @@ runs:
       run: ${{ github.action_path }}/scripts/connect.sh
       env:
         TUNNEL_NAME: ${{ inputs.tunnel-name }}
+        INTERFACE_TYPE: ${{ inputs.interface }}
         DIRECT_MODE: ${{ inputs.direct }}
         GITHUB_SHA: ${{ github.sha }}
