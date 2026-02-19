@@ -3,6 +3,11 @@ set -euo pipefail
 
 ASD_ENDPOINT="${ASD_ENDPOINT:-https://api.asd.host}"
 
+# Normalize special region values to empty (let API decide)
+if [ "${REGION:-}" = "User Default" ] || [ "${REGION:-}" = "default" ]; then
+  REGION=""
+fi
+
 echo "::group::Provisioning tunnel credentials"
 
 if [ -n "${INPUT_CLIENT_ID:-}" ] && [ -n "${INPUT_CLIENT_SECRET:-}" ]; then
