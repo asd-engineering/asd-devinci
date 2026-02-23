@@ -1,0 +1,166 @@
+name: 'ASD DevInCi'
+description: 'ASD DevInCi - Full development environment inside CI/CD runners with web terminal, VS Code, tunnels, and complete ASD CLI access'
+author: 'ASD Engineering (Accelerated Software Development B.V.)'
+
+branding:
+  icon: 'code'
+  color: 'purple'
+
+inputs:
+  api-key:
+    description: 'ASD API key with cicd:provision scope (provisions long-lived credentials)'
+    required: false
+
+  interface:
+    description: 'Interface type: ttyd (web terminal) or codeserver (VS Code in browser)'
+    default: 'ttyd'
+
+  shell:
+    description: 'Shell: bash, zsh, powershell'
+    default: 'bash'
+
+  username:
+    description: 'Basic auth username'
+    default: 'asd'
+
+  password:
+    description: 'Basic auth password (auto-generated if empty)'
+    required: false
+
+  tunnel-name:
+    description: 'Subdomain prefix (default: short SHA)'
+    required: false
+
+  tunnel-host:
+    description: 'Tunnel server hostname (auto-detected from API response)'
+    default: ''
+
+  tunnel-port:
+    description: 'Tunnel server SSH port (auto-detected from API response)'
+    default: ''
+
+  region:
+    description: 'Tunnel server region (synced from API via just devinci-sync-regions)'
+    required: false
+
+  ttl-minutes:
+    description: 'Token TTL in minutes (0 = no expiry, API key mode only)'
+    default: '0'
+
+  asd-version:
+    description: 'ASD CLI release tag'
+    default: 'latest'
+
+  api-endpoint:
+    description: 'ASD API endpoint'
+    default: 'https://api.asd.host'
+
+  client-id:
+    description: 'Pre-existing ASD client ID (skips provisioning if provided with client-secret)'
+    required: false
+
+  client-secret:
+    description: 'Pre-existing ASD client secret (required if client-id provided)'
+    required: false
+
+  direct:
+    description: 'Use --direct flag for asd expose (bypass Caddy proxy)'
+    default: 'false'
+
+outputs:
+  url:
+    description: 'Session URL with embedded credentials'
+    value: ${{ steps.connect.outputs.url }}
+
+  url-base:
+    description: 'Session URL without credentials'
+    value: ${{ steps.connect.outputs.url_base }}
+
+  tunnel-user:
+    description: 'Tunnel client ID'
+    value: ${{ steps.provision.outputs.client_id }}
+
+  local-port:
+    description: 'Local service port'
+    value: ${{ steps.interface.outputs.port }}
+
+  expires-at:
+    description: 'Token expiration (ISO 8601)'
+    value: ${{ steps.provision.outputs.expires_at }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install ASD CLI
+      id: install
+      shell: bash
+      run: ${{ github.action_path }}/scripts/setup.sh
+      env:
+        ASD_VERSION: ${{ inputs.asd-version }}
+        RUNNER_OS: ${{ runner.os }}
+        RUNNER_ARCH: ${{ runner.arch }}
+
+    - name: Provision credentials
+      id: provision
+      shell: bash
+      run: ${{ github.action_path }}/scripts/provision.sh
+      env:
+        ASD_API_KEY: ${{ inputs.api-key }}
+        ASD_ENDPOINT: ${{ inputs.api-endpoint }}
+        ASD_TUNNEL_HOST: ${{ inputs.tunnel-host }}
+        ASD_TUNNEL_PORT: ${{ inputs.tunnel-port }}
+        TTL_MINUTES: ${{ inputs.ttl-minutes }}
+        REGION: ${{ inputs.region }}
+        INPUT_CLIENT_ID: ${{ inputs.client-id }}
+        INPUT_CLIENT_SECRET: ${{ inputs.client-secret }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+
+    - name: Start interface
+      id: interface
+      shell: bash
+      run: ${{ github.action_path }}/scripts/start-interface.sh
+      env:
+        INTERFACE_TYPE: ${{ inputs.interface }}
+        SESSION_USERNAME: ${{ inputs.username }}
+        SESSION_PASSWORD: ${{ inputs.password }}
+        SESSION_SHELL: ${{ inputs.shell }}
+
+    - name: Write tunnel URL
+      id: tunnel-url
+      shell: bash
+      run: |
+        NAME="${TUNNEL_NAME:-${GITHUB_SHA:0:7}}"
+        if [ "$APPEND_USER_TO_SUBDOMAIN" = "true" ] && [ -n "$ASD_CLIENT_ID" ]; then
+          URL_HOST="${NAME}-${ASD_CLIENT_ID}.${ASD_TUNNEL_HOST}"
+        else
+          URL_HOST="${NAME}.${ASD_TUNNEL_HOST}"
+        fi
+        TUNNEL_URL="https://${URL_HOST}/"
+        mkdir -p workspace
+        echo "${TUNNEL_URL}" > workspace/tunnel-url.txt
+        echo "tunnel_url=${TUNNEL_URL}" >> "$GITHUB_OUTPUT"
+      env:
+        TUNNEL_NAME: ${{ inputs.tunnel-name }}
+        GITHUB_SHA: ${{ github.sha }}
+
+    - name: Upload tunnel URL
+      uses: actions/upload-artifact@v4
+      with:
+        name: tunnel-url
+        path: workspace/tunnel-url.txt
+        if-no-files-found: error
+        retention-days: 1
+
+    - name: Connect tunnel
+      id: connect
+      shell: bash
+      run: ${{ github.action_path }}/scripts/connect.sh
+      env:
+        TUNNEL_NAME: ${{ inputs.tunnel-name }}
+        INTERFACE_TYPE: ${{ inputs.interface }}
+        DIRECT_MODE: ${{ inputs.direct }}
+        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
