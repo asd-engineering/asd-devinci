@@ -260,7 +260,7 @@ while true; do
     HEALTH_FAILURES=0
     echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC'): session active"
   else
-    ((HEALTH_FAILURES++))
+    HEALTH_FAILURES=$((HEALTH_FAILURES + 1))
     echo "::warning::Health check failed (${HEALTH_FAILURES}/3)"
     if [ "$HEALTH_FAILURES" -ge 3 ]; then
       echo "::error::Local service on port ${PORT} is unresponsive after 3 consecutive checks"
