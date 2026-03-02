@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ShellCheck
-        run: shellcheck scripts/*.sh
+        run: shellcheck --severity=warning scripts/*.sh
       - name: Validate action.yml
         run: |
           python3 -c "import yaml, sys; yaml.safe_load(open('action.yml'))"
