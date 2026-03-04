@@ -12,12 +12,15 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
 - **Full ASD CLI**: All commands available (`asd net`, `asd caddy`, `asd expose`, etc.)
 - **Three Auth Modes**: Pre-existing credentials, API key, or ephemeral tokens
 - **Auto Server Discovery**: Tunnel host, port, and ownership fetched from API
+- **Multi-CI**: Works on GitHub Actions and GitLab CI/CD
 - **Cross-Platform**: Works on Linux, macOS, and Windows runners
 - **No SSH Keys**: Just click the URL to connect
 
 ## Quick Start
 
-### Basic Usage (Ephemeral Mode)
+### GitHub Actions
+
+#### Basic Usage (Ephemeral Mode)
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
@@ -25,7 +28,7 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
     tunnel-name: debug-${{ github.run_id }}
 ```
 
-### Production Usage (API Key Mode)
+#### Production Usage (API Key Mode)
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
@@ -35,7 +38,7 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
     ttl-minutes: 15
 ```
 
-### Pre-existing Credentials (from CLI)
+#### Pre-existing Credentials (from CLI)
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
@@ -46,7 +49,7 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
     tunnel-port: ${{ inputs.tunnel-port }}
 ```
 
-### VS Code in Browser
+#### VS Code in Browser
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
@@ -55,6 +58,43 @@ Full development environment inside CI/CD runners with web terminal, VS Code, tu
     interface: codeserver
     tunnel-name: vscode-${{ github.run_id }}
 ```
+
+### GitLab CI/CD
+
+DevInCi is available as a [GitLab CI/CD Component](https://docs.gitlab.com/ee/ci/components/). Add it to your `.gitlab-ci.yml`:
+
+#### Basic Usage
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+    inputs:
+      tunnel-name: debug-$CI_PIPELINE_ID
+```
+
+#### With API Key
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+    inputs:
+      api-key: $ASD_API_KEY
+      tunnel-name: debug-$CI_PIPELINE_ID
+      ttl-minutes: '15'
+```
+
+#### VS Code in Browser
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+    inputs:
+      api-key: $ASD_API_KEY
+      interface: codeserver
+      tunnel-name: vscode-$CI_PIPELINE_ID
+```
+
+> **Note:** On GitLab, mark your `ASD_API_KEY` and other secrets as "masked" in **Settings > CI/CD > Variables**. GitLab does not support runtime secret masking like GitHub Actions.
 
 ## Inputs
 
@@ -97,7 +137,9 @@ Use an API key with `cicd:provision` scope. The API returns all server details (
 
 1. Create an API key at [asd.host/workspace/api-keys](https://asd.host/workspace/api-keys)
 2. Enable the `cicd:provision` scope
-3. Add to GitHub secrets as `ASD_API_KEY`
+3. Add as a secret:
+   - **GitHub**: Repository secrets as `ASD_API_KEY`
+   - **GitLab**: CI/CD variables as `ASD_API_KEY` (mark as masked + protected)
 
 ### 3. Ephemeral Mode (No Setup)
 
@@ -197,7 +239,8 @@ jobs:
 
 ## Requirements
 
-- GitHub Actions runner (ubuntu, macos, or windows)
+- **GitHub Actions**: ubuntu, macos, or windows runner
+- **GitLab CI/CD**: Any runner with Docker executor (uses `ubuntu:22.04` image)
 - Internet access for tunnel connection
 - Optional: ASD API key for production use
 

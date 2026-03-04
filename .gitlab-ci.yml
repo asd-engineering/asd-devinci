@@ -1,0 +1,23 @@
+stages:
+  - lint
+  - test
+
+shellcheck:
+  stage: lint
+  image: koalaman/shellcheck-alpine:stable
+  script:
+    - shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh
+
+validate-component:
+  stage: lint
+  image: python:3.11-slim
+  script:
+    - pip install -q pyyaml
+    - python3 -c "import yaml, sys; list(yaml.safe_load_all(open('templates/dev-environment.yml')))"
+
+validate-gitlab-ci:
+  stage: lint
+  image: python:3.11-slim
+  script:
+    - pip install -q pyyaml
+    - python3 -c "import yaml, sys; yaml.safe_load(open('.gitlab-ci.yml'))"

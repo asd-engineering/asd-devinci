@@ -1,13 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPTS_DIR="${SCRIPTS_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+# shellcheck source=lib/ci.sh
+source "${SCRIPTS_DIR}/lib/ci.sh"
+
 INTERFACE="${INTERFACE_TYPE:-ttyd}"
-echo "::group::Starting ASD DevInCi (${INTERFACE})"
+ci_group_start "Starting ASD DevInCi (${INTERFACE})"
 
 # Generate password if not provided
 if [ -z "${SESSION_PASSWORD:-}" ]; then
   SESSION_PASSWORD=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
-  echo "::add-mask::${SESSION_PASSWORD}"
+  ci_mask "${SESSION_PASSWORD}"
 fi
 
 # Set defaults
@@ -15,14 +19,14 @@ SESSION_USERNAME="${SESSION_USERNAME:-asd}"
 SESSION_SHELL="${SESSION_SHELL:-bash}"
 
 # Export for subsequent steps (using generic names)
-echo "SESSION_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
-echo "SESSION_USERNAME=${SESSION_USERNAME}" >> "$GITHUB_ENV"
-echo "SESSION_SHELL=${SESSION_SHELL}" >> "$GITHUB_ENV"
+ci_set_env "SESSION_PASSWORD" "${SESSION_PASSWORD}"
+ci_set_env "SESSION_USERNAME" "${SESSION_USERNAME}"
+ci_set_env "SESSION_SHELL" "${SESSION_SHELL}"
 
 # Export ASD ttyd env vars for ASD CLI
-echo "ASD_TTYD_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
-echo "ASD_TTYD_USERNAME=${SESSION_USERNAME}" >> "$GITHUB_ENV"
-echo "ASD_TTYD_SHELL_CMD=${SESSION_SHELL}" >> "$GITHUB_ENV"
+ci_set_env "ASD_TTYD_PASSWORD" "${SESSION_PASSWORD}"
+ci_set_env "ASD_TTYD_USERNAME" "${SESSION_USERNAME}"
+ci_set_env "ASD_TTYD_SHELL_CMD" "${SESSION_SHELL}"
 
 # Initialize ASD workspace (creates workspace directory, .env file)
 export ASD_NON_INTERACTIVE=1
@@ -60,7 +64,7 @@ if [ "${INTERFACE}" = "codeserver" ]; then
 fi
 
 # Create workspace if asd init isn't available
-WORKSPACE_DIR="${GITHUB_WORKSPACE}/workspace"
+WORKSPACE_DIR="${CI_WORKSPACE}/workspace"
 mkdir -p "$WORKSPACE_DIR"
 
 # Pre-seed .env with credentials so asd init's merge policy preserves them
@@ -90,7 +94,7 @@ if asd init --yes 2>/dev/null; then
   fi
 else
   echo "Setting up workspace manually"
-  echo "ASD_WORKSPACE_DIR=${WORKSPACE_DIR}" >> "$GITHUB_ENV"
+  ci_set_env "ASD_WORKSPACE_DIR" "${WORKSPACE_DIR}"
   export ASD_WORKSPACE_DIR="${WORKSPACE_DIR}"
 fi
 
@@ -110,8 +114,8 @@ if [ "${INTERFACE}" = "codeserver" ]; then
   # Start code-server
   echo "Starting code-server (VS Code in browser)..."
 
-  echo "ASD_CODESERVER_AUTH=password" >> "$GITHUB_ENV"
-  echo "ASD_CODESERVER_PASSWORD=${SESSION_PASSWORD}" >> "$GITHUB_ENV"
+  ci_set_env "ASD_CODESERVER_AUTH" "password"
+  ci_set_env "ASD_CODESERVER_PASSWORD" "${SESSION_PASSWORD}"
 
   if asd code start 2>&1; then
     # Source updated .env for port
@@ -122,7 +126,7 @@ if [ "${INTERFACE}" = "codeserver" ]; then
     PORT="${ASD_CODESERVER_PORT:-8080}"
     echo "code-server started on port ${PORT}"
   else
-    echo "::error::Failed to start code-server"
+    ci_error "Failed to start code-server"
     exit 1
   fi
 else
@@ -132,7 +136,7 @@ else
   if asd ttyd start 2>&1; then
     echo "ttyd started successfully"
   else
-    echo "::error::Failed to start ttyd"
+    ci_error "Failed to start ttyd"
     exit 1
   fi
 
@@ -147,12 +151,12 @@ else
   echo "ttyd started on port ${PORT}"
 fi
 
-# Export port to GITHUB_ENV
-echo "SESSION_PORT=${PORT}" >> "$GITHUB_ENV"
-echo "ASD_TTYD_PORT=${PORT}" >> "$GITHUB_ENV"
+# Export port to environment
+ci_set_env "SESSION_PORT" "${PORT}"
+ci_set_env "ASD_TTYD_PORT" "${PORT}"
 
 # Set output
-echo "port=${PORT}" >> "$GITHUB_OUTPUT"
+ci_set_output "port" "${PORT}"
 
 # Verify the interface is accessible
 echo "Verifying interface is accessible..."
@@ -163,7 +167,7 @@ for i in {1..10}; do
     break
   fi
   if [ "$i" -eq 10 ]; then
-    echo "::warning::Interface may not be fully ready yet"
+    ci_warning "Interface may not be fully ready yet"
   fi
   sleep 1
 done
@@ -175,4 +179,4 @@ echo "  Port: ${PORT}"
 echo "  Username: ${SESSION_USERNAME}"
 echo ""
 
-echo "::endgroup::"
+ci_group_end

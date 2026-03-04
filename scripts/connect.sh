@@ -1,23 +1,27 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "::group::Connecting tunnel"
+SCRIPTS_DIR="${SCRIPTS_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+# shellcheck source=lib/ci.sh
+source "${SCRIPTS_DIR}/lib/ci.sh"
+
+ci_group_start "Connecting tunnel"
 
 # Get tunnel name (default to short SHA)
-NAME="${TUNNEL_NAME:-${GITHUB_SHA:0:7}}"
+NAME="${TUNNEL_NAME:-${CI_COMMIT:0:7}}"
 
 # T5: Validate tunnel name for DNS compatibility
 if [[ ! "$NAME" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
-  echo "::error::Invalid tunnel name '${NAME}'. Must be lowercase alphanumeric with hyphens, not starting/ending with hyphen."
+  ci_error "Invalid tunnel name '${NAME}'. Must be lowercase alphanumeric with hyphens, not starting/ending with hyphen."
   exit 1
 fi
 
-# S2: Mask GITHUB_TOKEN before use in curl calls
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-  echo "::add-mask::${GITHUB_TOKEN}"
+# S2: Mask CI token before use in curl calls
+if [ -n "${CI_TOKEN:-}" ]; then
+  ci_mask "${CI_TOKEN}"
 fi
 
-# IMPORTANT: Save tunnel credentials from GITHUB_ENV BEFORE sourcing .env
+# IMPORTANT: Save tunnel credentials from environment BEFORE sourcing .env
 # (asd init creates .env with empty ASD_TUNNEL_HOST which would overwrite our value)
 _ASD_CLIENT_ID="${ASD_CLIENT_ID:-}"
 _ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
@@ -57,11 +61,11 @@ DIRECT_MODE="${_DIRECT_MODE}"
 
 # Validate required tunnel credentials
 if [ -z "$ASD_TUNNEL_HOST" ]; then
-  echo "::error::ASD_TUNNEL_HOST is empty. Provision step must set it from API response or provide tunnel-host input."
+  ci_error "ASD_TUNNEL_HOST is empty. Provision step must set it from API response or provide tunnel-host input."
   exit 1
 fi
 if [ -z "$ASD_TUNNEL_PORT" ]; then
-  echo "::error::ASD_TUNNEL_PORT is empty. Provision step must set it from API response or provide tunnel-port input."
+  ci_error "ASD_TUNNEL_PORT is empty. Provision step must set it from API response or provide tunnel-port input."
   exit 1
 fi
 
@@ -80,8 +84,11 @@ ENCODED_PASS=$(printf '%s' "${PASSWORD}" | jq -sRr @uri)
 FULL_URL="https://${ENCODED_USER}:${ENCODED_PASS}@${URL_HOST}/"
 
 # Set outputs
-echo "url=${FULL_URL}" >> "$GITHUB_OUTPUT"
-echo "url_base=${TUNNEL_URL}" >> "$GITHUB_OUTPUT"
+ci_set_output "url" "${FULL_URL}"
+ci_set_output "url_base" "${TUNNEL_URL}"
+
+# Export TUNNEL_URL so GitLab environment.url can reference it
+ci_set_env "TUNNEL_URL" "${TUNNEL_URL}"
 
 # Write tunnel URL file for artifact upload (CLI watcher reads this)
 mkdir -p workspace
@@ -93,8 +100,8 @@ EXPIRES_AT="${ASD_EXPIRES_AT:-unknown}"
 # Detect interface type
 INTERFACE="${INTERFACE_TYPE:-ttyd}"
 
-# S4: Write summary without credentials in the link (GitHub does NOT mask step summary content)
-cat >> "$GITHUB_STEP_SUMMARY" << EOF
+# S4: Write summary
+SUMMARY_MD="$(cat << EOF
 ## ASD DevInCi Ready
 
 ### Click to Open
@@ -113,6 +120,8 @@ cat >> "$GITHUB_STEP_SUMMARY" << EOF
 ---
 *Powered by [ASD DevInCi](https://asd.host) - Dev in CI by ASD*
 EOF
+)"
+ci_set_summary "$SUMMARY_MD"
 
 echo ""
 echo "=============================================="
@@ -135,14 +144,7 @@ cleanup() {
   echo "ASD DevInCi cleanup..."
 
   # Mark deployment as inactive
-  if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ] && [ -n "${GITHUB_TOKEN:-}" ]; then
-    curl -sf -X POST \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      -H "Accept: application/vnd.github+json" \
-      "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" \
-      -d '{"state": "inactive"}' > /dev/null 2>&1 || true
-    echo "Deployment marked inactive"
-  fi
+  ci_deactivate_deployment "${DEPLOY_ID}"
 
   # Stop any tunnel processes started by asd expose
   asd expose stop --all 2>/dev/null || true
@@ -154,37 +156,8 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Create GitHub deployment with tunnel URL for immediate visibility
-if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
-  echo "Creating GitHub deployment..."
-  DEPLOY_ID=$(curl -sf -X POST \
-    -H "Authorization: token ${GITHUB_TOKEN}" \
-    -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments" \
-    -d "{
-      \"ref\": \"${GITHUB_SHA:-HEAD}\",
-      \"environment\": \"devinci\",
-      \"description\": \"ASD DevInCi ${INTERFACE} session\",
-      \"auto_merge\": false,
-      \"required_contexts\": []
-    }" | jq -r '.id' 2>/dev/null) || true
-
-  if [ -n "$DEPLOY_ID" ] && [ "$DEPLOY_ID" != "null" ]; then
-    curl -sf -X POST \
-      -H "Authorization: token ${GITHUB_TOKEN}" \
-      -H "Accept: application/vnd.github+json" \
-      "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments/${DEPLOY_ID}/statuses" \
-      -d "{
-        \"state\": \"success\",
-        \"environment_url\": \"${TUNNEL_URL}\",
-        \"description\": \"ASD DevInCi session ready\"
-      }" > /dev/null 2>&1 || true
-    echo "DEPLOY_ID=${DEPLOY_ID}" >> "$GITHUB_ENV"
-    echo "Deployment created: View deployment button now visible"
-  else
-    echo "::warning::Could not create deployment (check permissions)"
-  fi
-fi
+# Create deployment (GitHub: API call, GitLab: handled by environment: keyword)
+ci_create_deployment "devinci" "ASD DevInCi ${INTERFACE} session" "${TUNNEL_URL}"
 
 # Ensure required env vars are available for asd expose
 export ASD_CLIENT_ID="${ASD_CLIENT_ID}"
@@ -236,14 +209,14 @@ if ! env \
   ASD_BASIC_AUTH_USERNAME="${ASD_BASIC_AUTH_USERNAME}" \
   ASD_BASIC_AUTH_PASSWORD="${ASD_BASIC_AUTH_PASSWORD}" \
   asd expose "${EXPOSE_ARGS[@]}"; then
-  echo "::error::Tunnel connection failed"
+  ci_error "Tunnel connection failed"
   echo "  Host: ${ASD_TUNNEL_HOST}:${ASD_TUNNEL_PORT}"
   echo "  Client ID: ${ASD_CLIENT_ID}"
   echo "  Check: API key validity, firewall rules, tunnel server status"
   exit 1
 fi
 
-echo "::endgroup::"
+ci_group_end
 
 echo ""
 echo "Session active. Cancel the workflow run to terminate."
@@ -261,9 +234,9 @@ while true; do
     echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC'): session active"
   else
     HEALTH_FAILURES=$((HEALTH_FAILURES + 1))
-    echo "::warning::Health check failed (${HEALTH_FAILURES}/3)"
+    ci_warning "Health check failed (${HEALTH_FAILURES}/3)"
     if [ "$HEALTH_FAILURES" -ge 3 ]; then
-      echo "::error::Local service on port ${PORT} is unresponsive after 3 consecutive checks"
+      ci_error "Local service on port ${PORT} is unresponsive after 3 consecutive checks"
       exit 1
     fi
   fi

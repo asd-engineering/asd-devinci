@@ -1,16 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "::group::Installing ASD CLI ${ASD_VERSION:-latest}"
+SCRIPTS_DIR="${SCRIPTS_DIR:-$(cd "$(dirname "$0")" && pwd)}"
+# shellcheck source=lib/ci.sh
+source "${SCRIPTS_DIR}/lib/ci.sh"
+
+ci_group_start "Installing ASD CLI ${ASD_VERSION:-latest}"
 
 # Determine asset name based on OS/arch
-case "${RUNNER_OS}-${RUNNER_ARCH}" in
+case "${CI_RUNNER_OS}-${CI_RUNNER_ARCH}" in
   Linux-X64)   ASSET="asd-linux-x64.tar.gz" ;;
   Linux-ARM64) ASSET="asd-linux-arm64.tar.gz" ;;
   macOS-X64)   ASSET="asd-darwin-x64.tar.gz" ;;
   macOS-ARM64) ASSET="asd-darwin-arm64.tar.gz" ;;
   Windows-X64) ASSET="asd-windows-x64.zip" ;;
-  *) echo "::error::Unsupported platform: ${RUNNER_OS}-${RUNNER_ARCH}"; exit 1 ;;
+  *) ci_error "Unsupported platform: ${CI_RUNNER_OS}-${CI_RUNNER_ARCH}"; exit 1 ;;
 esac
 
 # Download from GitHub releases
@@ -33,7 +37,7 @@ echo "Downloading: ${DOWNLOAD_URL}"
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-if [ "$RUNNER_OS" = "Windows" ]; then
+if [ "$CI_RUNNER_OS" = "Windows" ]; then
   # Windows: binaries go to %LOCALAPPDATA%/asd/bin
   curl -fsSL "${DOWNLOAD_URL}" -o "$TMPDIR/asd-cli.zip"
 
@@ -49,15 +53,15 @@ if [ "$RUNNER_OS" = "Windows" ]; then
     cp "$TMPDIR/extract/"*/bin/* "$ASD_BIN_DIR/"
   fi
 
-  echo "${ASD_BIN_DIR}" >> "$GITHUB_PATH"
-  echo "ASD_BIN_DIR=${ASD_BIN_DIR}" >> "$GITHUB_ENV"
+  ci_add_path "${ASD_BIN_DIR}"
+  ci_set_env "ASD_BIN_DIR" "${ASD_BIN_DIR}"
   echo "Installed to ${ASD_BIN_DIR}"
 else
   # Linux/macOS: binaries go to ~/.local/share/asd/bin (where ASD CLI expects them)
   curl -fsSL "${DOWNLOAD_URL}" -o "$TMPDIR/asd-cli.tar.gz"
 
   # Determine ASD bin directory based on OS
-  if [ "$RUNNER_OS" = "macOS" ]; then
+  if [ "$CI_RUNNER_OS" = "macOS" ]; then
     ASD_BIN_DIR="${HOME}/Library/Application Support/asd/bin"
   else
     ASD_BIN_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/asd/bin"
@@ -73,16 +77,16 @@ else
   chmod +x "$ASD_BIN_DIR"/*
 
   # Add to PATH for direct execution
-  echo "${ASD_BIN_DIR}" >> "$GITHUB_PATH"
+  ci_add_path "${ASD_BIN_DIR}"
   # Export for subsequent steps so ASD CLI knows where binaries are
-  echo "ASD_BIN_DIR=${ASD_BIN_DIR}" >> "$GITHUB_ENV"
+  ci_set_env "ASD_BIN_DIR" "${ASD_BIN_DIR}"
 
   echo "Installed to ${ASD_BIN_DIR}"
 fi
 
 # macOS: ttyd from releases might need Homebrew version in some cases
 # (the released binary should work, but keep this as fallback)
-if [ "$RUNNER_OS" = "macOS" ] && ! "${ASD_BIN_DIR}/ttyd" --version &>/dev/null; then
+if [ "$CI_RUNNER_OS" = "macOS" ] && ! "${ASD_BIN_DIR}/ttyd" --version &>/dev/null; then
   echo "Installing ttyd via Homebrew as fallback..."
   brew install ttyd
   cp "$(which ttyd)" "$ASD_BIN_DIR/ttyd"
@@ -101,4 +105,4 @@ ls -la "$ASD_BIN_DIR"
 echo ""
 echo "ASD CLI installed successfully to ${ASD_BIN_DIR}"
 
-echo "::endgroup::"
+ci_group_end

@@ -12,7 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ShellCheck
-        run: shellcheck --severity=warning scripts/*.sh
+        run: shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh
       - name: Validate action.yml
         run: |
           python3 -c "import yaml, sys; yaml.safe_load(open('action.yml'))"
+      - name: Validate GitLab component
+        run: |
+          python3 -c "import yaml, sys; list(yaml.safe_load_all(open('templates/dev-environment.yml')))"
