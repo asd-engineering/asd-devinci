@@ -83,11 +83,12 @@ dev-environment:
     - apt-get update -qq && apt-get install -y -qq curl jq git openssl
     - |
       git clone --depth 1 --branch "$[[ component.version ]]" \
-        "${CI_SERVER_URL}/$[[ component.project_path ]].git" /tmp/devinci
+        "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/$[[ component.project_path ]].git" /tmp/devinci
     - export SCRIPTS_DIR=/tmp/devinci/scripts
   script:
-    - source "${SCRIPTS_DIR}/lib/ci.sh"
-    - bash "${SCRIPTS_DIR}/setup.sh"
+    # All scripts must be sourced (not bash-invoked) so that exports from
+    # ci_set_env / ci_add_path persist across scripts in the same shell.
+    - source "${SCRIPTS_DIR}/setup.sh"
     - source "${SCRIPTS_DIR}/provision.sh"
     - source "${SCRIPTS_DIR}/start-interface.sh"
     - source "${SCRIPTS_DIR}/connect.sh"

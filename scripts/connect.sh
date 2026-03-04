@@ -87,8 +87,10 @@ FULL_URL="https://${ENCODED_USER}:${ENCODED_PASS}@${URL_HOST}/"
 ci_set_output "url" "${FULL_URL}"
 ci_set_output "url_base" "${TUNNEL_URL}"
 
-# Export TUNNEL_URL so GitLab environment.url can reference it
+# Export TUNNEL_URL for current shell and write to dotenv so GitLab
+# environment.url can resolve it (GitLab reads dotenv artifacts, not exports)
 ci_set_env "TUNNEL_URL" "${TUNNEL_URL}"
+ci_set_output "TUNNEL_URL" "${TUNNEL_URL}"
 
 # Write tunnel URL file for artifact upload (CLI watcher reads this)
 mkdir -p workspace
