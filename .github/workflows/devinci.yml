@@ -13,6 +13,9 @@ on:
         options:
           - ttyd
           - codeserver
+      password:
+        description: 'Session password'
+        default: 'devinci'
 
 jobs:
   terminal:
@@ -28,3 +31,4 @@ jobs:
           tunnel-name: debug-${{ github.run_id }}
           ttl-minutes: ${{ github.event.inputs.ttl }}
           interface: ${{ github.event.inputs.interface }}
+          password: ${{ github.event.inputs.password }}
