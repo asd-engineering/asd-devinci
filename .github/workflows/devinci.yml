@@ -12,7 +12,7 @@ on:
           - macos-latest
           - windows-latest
       interface:
-        description: 'Interface'
+        description: 'Interface type'
         default: 'ttyd'
         type: choice
         options:
@@ -25,7 +25,6 @@ on:
         options:
           - bash
           - zsh
-          - powershell
       username:
         description: 'Username'
         default: 'asd'
@@ -33,7 +32,7 @@ on:
         description: 'Password'
         default: 'devinci'
       region:
-        description: 'Tunnel server region'
+        description: 'Tunnel region (empty = auto)'
         default: ''
       asd-version:
         description: 'ASD CLI version'
@@ -52,9 +51,7 @@ jobs:
       deployments: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: ./
-        id: devinci
         with:
           api-key: ${{ secrets.ASD_API_KEY }}
           interface: ${{ inputs.interface }}
