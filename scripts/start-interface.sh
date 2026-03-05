@@ -141,7 +141,7 @@ fi
 for envfile in .env tpl.env; do
   if [ -f "$envfile" ]; then
     set -a
-    # shellcheck disable=SC1091
+    # shellcheck disable=SC1090,SC1091
     source "$envfile" || true
     set +a
   fi
