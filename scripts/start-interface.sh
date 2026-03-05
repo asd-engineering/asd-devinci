@@ -81,7 +81,7 @@ EOF
 fi
 chmod 600 .env
 
-# Try asd init first
+# Try asd init first (creates workspace, tpl.env, asd.yaml)
 if asd init --yes 2>/dev/null; then
   echo "Workspace initialized via asd init"
 else
@@ -93,7 +93,12 @@ fi
 # Ensure workspace dir is set after init
 export ASD_WORKSPACE_DIR="${ASD_WORKSPACE_DIR:-${WORKSPACE_DIR}}"
 
-# Write credentials to .env for ASD commands and source it
+# Sync tpl.env → .env (ports, paths, etc. from project template)
+if asd env init 2>/dev/null; then
+  echo "Environment synced via asd env init"
+fi
+
+# Append credentials to .env (after asd env init so they take precedence)
 cat >> ".env" << EOF
 ASD_TTYD_USERNAME=${ASD_TTYD_USERNAME}
 ASD_TTYD_PASSWORD=${ASD_TTYD_PASSWORD}
@@ -131,14 +136,16 @@ else
   fi
 fi
 
-# Source .env for port values written by asd commands (asd ttyd start / asd code start
-# write ASD_TTYD_PORT / ASD_CODESERVER_PORT to .env — do NOT hardcode fallback ports)
-if [ -f ".env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  source .env || true
-  set +a
-fi
+# Source .env and tpl.env for port values (ASD CLI reads ports from tpl.env;
+# asd env init syncs them to .env, but source both as fallback)
+for envfile in .env tpl.env; do
+  if [ -f "$envfile" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$envfile" || true
+    set +a
+  fi
+done
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   PORT="${ASD_CODESERVER_PORT:-}"
