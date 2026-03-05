@@ -60,7 +60,7 @@ devinci:
   stage: test
   image: ubuntu:22.04
   rules:
-    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "api"
       when: manual
   variables:
     ASD_ENDPOINT: https://api.asd.host
