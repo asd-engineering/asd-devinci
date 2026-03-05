@@ -6,6 +6,13 @@ on:
       ttl:
         description: 'Session duration (minutes)'
         default: '15'
+      interface:
+        description: 'Interface type'
+        default: 'ttyd'
+        type: choice
+        options:
+          - ttyd
+          - codeserver
 
 jobs:
   terminal:
@@ -20,3 +27,4 @@ jobs:
           api-key: ${{ secrets.ASD_API_KEY }}
           tunnel-name: debug-${{ github.run_id }}
           ttl-minutes: ${{ github.event.inputs.ttl }}
+          interface: ${{ github.event.inputs.interface }}

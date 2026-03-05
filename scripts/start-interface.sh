@@ -84,14 +84,6 @@ chmod 600 .env
 # Try asd init first
 if asd init --yes 2>/dev/null; then
   echo "Workspace initialized via asd init"
-  # Restrict .env permissions before writing secrets
-  if [ -f ".env" ]; then
-    chmod 600 .env
-    set -a
-    # shellcheck disable=SC1091
-    source .env
-    set +a
-  fi
 else
   echo "Setting up workspace manually"
   ci_set_env "ASD_WORKSPACE_DIR" "${WORKSPACE_DIR}"
@@ -101,7 +93,7 @@ fi
 # Ensure workspace dir is set after init
 export ASD_WORKSPACE_DIR="${ASD_WORKSPACE_DIR:-${WORKSPACE_DIR}}"
 
-# Write to .env for ASD commands
+# Write credentials to .env for ASD commands and source it
 cat >> ".env" << EOF
 ASD_TTYD_USERNAME=${ASD_TTYD_USERNAME}
 ASD_TTYD_PASSWORD=${ASD_TTYD_PASSWORD}
@@ -109,6 +101,10 @@ ASD_TTYD_SHELL_CMD=${ASD_TTYD_SHELL_CMD}
 ASD_WORKSPACE_DIR=${ASD_WORKSPACE_DIR}
 EOF
 chmod 600 .env
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   # Start code-server
@@ -118,13 +114,7 @@ if [ "${INTERFACE}" = "codeserver" ]; then
   ci_set_env "ASD_CODESERVER_PASSWORD" "${SESSION_PASSWORD}"
 
   if asd code start 2>&1; then
-    # Source updated .env for port
-    set -a
-    # shellcheck disable=SC1091
-    source .env || true
-    set +a
-    PORT="${ASD_CODESERVER_PORT:-8080}"
-    echo "code-server started on port ${PORT}"
+    echo "code-server started"
   else
     ci_error "Failed to start code-server"
     exit 1
@@ -134,22 +124,27 @@ else
   echo "Starting ttyd (web terminal)..."
 
   if asd ttyd start 2>&1; then
-    echo "ttyd started successfully"
+    echo "ttyd started"
   else
     ci_error "Failed to start ttyd"
     exit 1
   fi
-
-  # Source updated .env for port
-  if [ -f ".env" ]; then
-    set -a
-    # shellcheck disable=SC1091
-    source .env || true
-    set +a
-  fi
-  PORT="${ASD_TTYD_PORT:-7681}"
-  echo "ttyd started on port ${PORT}"
 fi
+
+# Source .env once for port values written by asd commands
+if [ -f ".env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source .env || true
+  set +a
+fi
+
+if [ "${INTERFACE}" = "codeserver" ]; then
+  PORT="${ASD_CODESERVER_PORT:-8080}"
+else
+  PORT="${ASD_TTYD_PORT:-7681}"
+fi
+echo "${INTERFACE} running on port ${PORT}"
 
 # Export port to environment
 ci_set_env "SESSION_PORT" "${PORT}"

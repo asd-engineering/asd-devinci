@@ -21,43 +21,12 @@ if [ -n "${CI_TOKEN:-}" ]; then
   ci_mask "${CI_TOKEN}"
 fi
 
-# IMPORTANT: Save tunnel credentials from environment BEFORE sourcing .env
-# (asd init creates .env with empty ASD_TUNNEL_HOST which would overwrite our value)
-_ASD_CLIENT_ID="${ASD_CLIENT_ID:-}"
-_ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
-_ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST:-}"
-_ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT:-}"
-_APPEND_USER_TO_SUBDOMAIN="${APPEND_USER_TO_SUBDOMAIN:-true}"
-_DIRECT_MODE="${DIRECT_MODE:-false}"
-
-# Initialize workspace + generate .env from tpl.env macros
-asd init --yes
-
-# S3: Restrict .env file permissions after asd init
-if [ -f ".env" ]; then
-  chmod 600 .env
-fi
-
-# Source .env for port if available
-if [ -f ".env" ]; then
-  # shellcheck disable=SC1091
-  source .env || true
-fi
-
-# Get the port (prefer SESSION_PORT, fallback to ASD_TTYD_PORT)
+# Get port and credentials from environment (set by previous steps via ci_set_env)
 PORT="${SESSION_PORT:-${ASD_TTYD_PORT:-7681}}"
-
-# Get credentials (prefer SESSION_*, fallback to ASD_TTYD_*)
 USERNAME="${SESSION_USERNAME:-${ASD_TTYD_USERNAME:-asd}}"
 PASSWORD="${SESSION_PASSWORD:-${ASD_TTYD_PASSWORD:-}}"
-
-# Restore tunnel credentials (use saved values, not .env values)
-ASD_CLIENT_ID="${_ASD_CLIENT_ID}"
-ASD_CLIENT_SECRET="${_ASD_CLIENT_SECRET}"
-ASD_TUNNEL_HOST="${_ASD_TUNNEL_HOST}"
-ASD_TUNNEL_PORT="${_ASD_TUNNEL_PORT}"
-APPEND_USER_TO_SUBDOMAIN="${_APPEND_USER_TO_SUBDOMAIN}"
-DIRECT_MODE="${_DIRECT_MODE}"
+APPEND_USER_TO_SUBDOMAIN="${APPEND_USER_TO_SUBDOMAIN:-true}"
+DIRECT_MODE="${DIRECT_MODE:-false}"
 
 # Validate required tunnel credentials
 if [ -z "$ASD_TUNNEL_HOST" ]; then
@@ -202,15 +171,8 @@ fi
 
 echo "Connecting tunnel: ${NAME} on port ${PORT} (service: ${SERVICE_ID})"
 
-# Expose the service via tunnel (asd expose sets up tunnel and returns)
-if ! env \
-  ASD_CLIENT_ID="${ASD_CLIENT_ID}" \
-  ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET}" \
-  ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST}" \
-  ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT}" \
-  ASD_BASIC_AUTH_USERNAME="${ASD_BASIC_AUTH_USERNAME}" \
-  ASD_BASIC_AUTH_PASSWORD="${ASD_BASIC_AUTH_PASSWORD}" \
-  asd expose "${EXPOSE_ARGS[@]}"; then
+# Expose the service via tunnel (asd expose reads creds from .env / environment)
+if ! asd expose "${EXPOSE_ARGS[@]}"; then
   ci_error "Tunnel connection failed"
   echo "  Host: ${ASD_TUNNEL_HOST}:${ASD_TUNNEL_PORT}"
   echo "  Client ID: ${ASD_CLIENT_ID}"
