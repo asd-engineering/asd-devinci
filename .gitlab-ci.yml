@@ -75,8 +75,6 @@ devinci:
     - source "${SCRIPTS_DIR}/provision.sh"
     - source "${SCRIPTS_DIR}/start-interface.sh"
     - source "${SCRIPTS_DIR}/connect.sh"
-  environment:
-    name: devinci/$CI_PIPELINE_ID
   artifacts:
     reports:
       dotenv: devinci.env
