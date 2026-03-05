@@ -55,7 +55,7 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
   # Provisions credentials via credential-provision endpoint with configurable TTL
   echo "Using API key authentication (credential-provision)"
 
-  RESPONSE=$(curl -sf "${ASD_ENDPOINT}/functions/v1/credential-provision" \
+  HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" "${ASD_ENDPOINT}/functions/v1/credential-provision" \
     -H "X-API-Key: ${ASD_API_KEY}" \
     -H "Content-Type: application/json" \
     -d "{
@@ -67,11 +67,15 @@ elif [ -n "${ASD_API_KEY:-}" ]; then
         \"ci_repository\": \"${CI_REPO}\",
         \"ci_platform\": \"${CI_PLATFORM}\"
       }
-    }" 2>&1) || {
-    ci_error "Failed to provision credentials via API key"
+    }" 2>&1) || true
+  HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -1)
+  RESPONSE=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+  if [ "${HTTP_CODE:-0}" -lt 200 ] 2>/dev/null || [ "${HTTP_CODE:-0}" -ge 300 ] 2>/dev/null; then
+    ci_error "Failed to provision credentials via API key (HTTP ${HTTP_CODE})"
     echo "Response: $RESPONSE"
     exit 1
-  }
+  fi
 
   if [ -z "$RESPONSE" ]; then
     ci_error "Empty response from credential-provision endpoint"
@@ -123,16 +127,20 @@ else
   echo "Creating ephemeral tunnel credentials..."
   ci_warning "Ephemeral tokens are short-lived. Use an API key for longer sessions."
 
-  RESPONSE=$(curl -sf "${ASD_ENDPOINT}/functions/v1/create-ephemeral-token" \
+  HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" "${ASD_ENDPOINT}/functions/v1/create-ephemeral-token" \
     -H "Content-Type: application/json" \
     -d "{
       \"source\": \"ci-action:devinci\",
       \"repo\": \"${CI_REPO:-unknown}\"
-    }" 2>&1) || {
-    ci_error "Failed to create ephemeral token"
+    }" 2>&1) || true
+  HTTP_CODE=$(echo "$HTTP_RESPONSE" | tail -1)
+  RESPONSE=$(echo "$HTTP_RESPONSE" | sed '$d')
+
+  if [ "${HTTP_CODE:-0}" -lt 200 ] 2>/dev/null || [ "${HTTP_CODE:-0}" -ge 300 ] 2>/dev/null; then
+    ci_error "Failed to create ephemeral token (HTTP ${HTTP_CODE})"
     echo "Response: $RESPONSE"
     exit 1
-  }
+  fi
 
   if [ -z "$RESPONSE" ]; then
     ci_error "Empty response from create-ephemeral-token endpoint"
