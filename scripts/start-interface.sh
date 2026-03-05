@@ -132,57 +132,22 @@ if [ "${INTERFACE}" = "codeserver" ]; then
 else
   # Start ttyd (default)
   echo "Starting ttyd (web terminal)..."
-  PORT="${ASD_TTYD_PORT:-7681}"
 
   if asd ttyd start 2>&1; then
-    echo "asd ttyd start reported success"
-    # Source updated .env for port
-    if [ -f ".env" ]; then
-      set -a
-      # shellcheck disable=SC1091
-      source .env || true
-      set +a
-    fi
-    PORT="${ASD_TTYD_PORT:-${PORT}}"
+    echo "ttyd started successfully"
+  else
+    ci_error "Failed to start ttyd"
+    exit 1
   fi
 
-  # Verify ttyd is actually running — if not, start directly as fallback
-  sleep 2
-  if ! curl -so /dev/null -w '%{http_code}' "http://localhost:${PORT}/" 2>/dev/null | grep -qE '^[1-4]'; then
-    echo "ttyd not responding on port ${PORT} — checking process..."
-    pgrep -la ttyd || echo "  No ttyd process found"
-    echo "Starting ttyd directly as fallback..."
-
-    TTYD_BIN="${ASD_BIN_DIR}/ttyd"
-    if [ ! -x "$TTYD_BIN" ]; then
-      ci_error "ttyd binary not found at ${TTYD_BIN}"
-      exit 1
-    fi
-
-    # Start ttyd directly with basic auth
-    nohup "$TTYD_BIN" \
-      --port "${PORT}" \
-      --credential "${SESSION_USERNAME}:${SESSION_PASSWORD}" \
-      --writable \
-      "${SESSION_SHELL}" > /tmp/ttyd.log 2>&1 &
-    TTYD_PID=$!
-    echo "ttyd started directly (PID ${TTYD_PID}) on port ${PORT}"
-
-    # Wait for it to be ready
-    for attempt in $(seq 1 10); do
-      if curl -so /dev/null "http://localhost:${PORT}/" 2>/dev/null; then
-        echo "ttyd is responding on port ${PORT}"
-        break
-      fi
-      if [ "$attempt" -eq 10 ]; then
-        ci_error "ttyd failed to start. Log:"
-        cat /tmp/ttyd.log 2>/dev/null || true
-        exit 1
-      fi
-      sleep 1
-    done
+  # Source updated .env for port
+  if [ -f ".env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env || true
+    set +a
   fi
-
+  PORT="${ASD_TTYD_PORT:-7681}"
   echo "ttyd started on port ${PORT}"
 fi
 
