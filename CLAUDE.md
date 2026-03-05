@@ -2,15 +2,13 @@
 
 ## Overview
 
-**asd-devinci** (DevInCi = Dev in CI) is a reusable CI/CD component that spins up a full development environment inside CI runners (GitHub Actions + GitLab CI/CD) with web terminal (ttyd), VS Code (code-server), and ASD tunnel access. Just click the URL to connect.
+**asd-devinci** (DevInCi = Dev in CI) is a reusable GitHub Composite Action that spins up a full development environment inside GitHub Actions runners with web terminal (ttyd), VS Code (code-server), and ASD tunnel access. Just click the URL to connect.
 
 ## Structure
 
 ```
 asd-devinci/
-├── action.yml                         # GitHub Actions composite action
-├── templates/
-│   └── dev-environment.yml            # GitLab CI/CD component
+├── action.yml                         # Composite action definition
 ├── scripts/
 │   ├── lib/
 │   │   └── ci.sh                      # CI platform abstraction layer
@@ -18,8 +16,9 @@ asd-devinci/
 │   ├── provision.sh                   # Provision tunnel credentials (3 modes)
 │   ├── start-interface.sh             # Start ttyd or code-server
 │   └── connect.sh                     # Connect tunnel + generate URLs
-├── .github/workflows/ci.yml           # GitHub CI pipeline
-├── .gitlab-ci.yml                     # GitLab CI pipeline
+├── .github/workflows/
+│   ├── ci.yml                         # CI pipeline (shellcheck)
+│   └── devinci.yml                    # Self-test workflow
 ├── README.md
 ├── CLAUDE.md
 ├── LICENSE
@@ -39,36 +38,23 @@ asd-devinci/
 
 ## Key Design Decisions
 
-- **CI-agnostic scripts**: All scripts use `scripts/lib/ci.sh` abstraction layer to work on both GitHub Actions and GitLab CI/CD
+- **CI-agnostic scripts**: Scripts use `scripts/lib/ci.sh` abstraction layer (shared with GitLab component in separate repo)
 - **No hardcoded defaults** for tunnel-host/tunnel-port: always read from API response or explicit input
+- **No hardcoded port defaults**: Ports come from tpl.env / asd env init, parsed from asd start output
 - **X-API-Key header** for API key auth (not Authorization: Bearer)
 - **API endpoint** defaults to `https://api.asd.host` (not raw Supabase URL)
 - **Server discovery from API**: tunnel_host, tunnel_port, ownership_type all returned by API
-- **No tunnel-fqdn/tunnel-ownership inputs**: ownership derived from API response automatically
 - **Ownership-aware URLs**: shared = `name-clientid.host`, dedicated = `name.host`
 - **--direct flag**: optional bypass of Caddy proxy via `direct` input
-- **GitLab masking**: No runtime secret masking — users must mark CI variables as "masked" in project settings
-- **GitLab environments**: Uses native `environment:` keyword instead of GitHub Deployments API
 
 ## Consumer Usage
 
-### GitHub Actions
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
   with:
     api-key: ${{ secrets.ASD_API_KEY }}
     tunnel-name: debug-${{ github.run_id }}
     ttl-minutes: 15
-```
-
-### GitLab CI/CD
-```yaml
-include:
-  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
-    inputs:
-      api-key: $ASD_API_KEY
-      tunnel-name: debug-$CI_PIPELINE_ID
-      ttl-minutes: '15'
 ```
 
 ## Key Inputs
@@ -81,5 +67,7 @@ include:
 - `direct`: Use `--direct` flag for asd expose
 - `ttl-minutes`: Token TTL in minutes (0 = no expiry, API key mode only)
 - `asd-version`: ASD CLI release tag (default: `latest`)
-- `stage`: Pipeline stage (GitLab only, default: `deploy`)
-- `component-path`: GitLab project path (override for forks)
+
+## Related
+
+- **GitLab CI/CD Component**: [accelerated-software-development/devinci](https://gitlab.com/accelerated-software-development/devinci) (separate repo)
