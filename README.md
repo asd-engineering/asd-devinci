@@ -214,7 +214,7 @@ jobs:
 
 ## Also Available
 
-- **GitLab CI/CD Component**: [accelerated-software-development/devinci](https://gitlab.com/accelerated-software-development/devinci)
+- **GitLab CI/CD Component**: [accelerated-software-development/devinci](https://gitlab.com/explore/catalog/accelerated-software-development/devinci)
 
 ## Release
 
