@@ -5,7 +5,6 @@ on:
     inputs:
       runner:
         description: 'Runner OS'
-        required: false
         default: 'ubuntu-latest'
         type: choice
         options:
@@ -14,15 +13,13 @@ on:
           - windows-latest
       interface:
         description: 'Interface'
-        required: false
-        default: 'codeserver'
+        default: 'ttyd'
         type: choice
         options:
           - ttyd
           - codeserver
       shell:
         description: 'Shell'
-        required: false
         default: 'bash'
         type: choice
         options:
@@ -31,26 +28,16 @@ on:
           - powershell
       username:
         description: 'Username'
-        required: true
-        type: string
+        default: 'asd'
       password:
         description: 'Password'
-        required: true
-        type: string
+        default: 'devinci'
       region:
         description: 'Tunnel server region'
-        required: false
-        default: 'default'
-        type: choice
-        options:
-          - default
-          - eu-west
-          - us-east
+        default: ''
       asd-version:
         description: 'ASD CLI version'
-        required: false
         default: 'latest'
-        type: string
 
 concurrency:
   group: devinci-${{ github.actor }}
