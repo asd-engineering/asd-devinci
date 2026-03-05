@@ -118,26 +118,26 @@ if [ "${INTERFACE}" = "codeserver" ]; then
   ci_set_env "ASD_CODESERVER_AUTH" "password"
   ci_set_env "ASD_CODESERVER_PASSWORD" "${SESSION_PASSWORD}"
 
-  if asd code start 2>&1; then
-    echo "code-server started"
-  else
+  START_OUTPUT=$(asd code start 2>&1) || {
     ci_error "Failed to start code-server"
+    echo "$START_OUTPUT"
     exit 1
-  fi
+  }
+  echo "$START_OUTPUT"
 else
   # Start ttyd (default)
   echo "Starting ttyd (web terminal)..."
 
-  if asd ttyd start 2>&1; then
-    echo "ttyd started"
-  else
+  START_OUTPUT=$(asd ttyd start 2>&1) || {
     ci_error "Failed to start ttyd"
+    echo "$START_OUTPUT"
     exit 1
-  fi
+  }
+  echo "$START_OUTPUT"
 fi
 
-# Source .env and tpl.env for port values (ASD CLI reads ports from tpl.env;
-# asd env init syncs them to .env, but source both as fallback)
+# Discover port: source .env and tpl.env, then parse start output as fallback.
+# ASD CLI reads port from tpl.env/asd.yaml but may not write it back to .env.
 for envfile in .env tpl.env; do
   if [ -f "$envfile" ]; then
     set -a
@@ -149,12 +149,20 @@ done
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   PORT="${ASD_CODESERVER_PORT:-}"
+  # Fallback: parse from "Using ASD_CODESERVER_PORT=XXXXX" in start output
+  if [ -z "$PORT" ]; then
+    PORT=$(echo "$START_OUTPUT" | grep -oP 'ASD_CODESERVER_PORT=\K\d+' || true)
+  fi
 else
   PORT="${ASD_TTYD_PORT:-}"
+  # Fallback: parse from "Using ASD_TTYD_PORT=XXXXX" in start output
+  if [ -z "$PORT" ]; then
+    PORT=$(echo "$START_OUTPUT" | grep -oP 'ASD_TTYD_PORT=\K\d+' || true)
+  fi
 fi
 
 if [ -z "${PORT}" ]; then
-  ci_error "No port found for ${INTERFACE}. Check that asd ${INTERFACE} start wrote to .env"
+  ci_error "No port found for ${INTERFACE}. Start output: ${START_OUTPUT}"
   exit 1
 fi
 echo "${INTERFACE} running on port ${PORT}"
