@@ -77,7 +77,6 @@ devinci:
     - source "${SCRIPTS_DIR}/connect.sh"
   environment:
     name: devinci/$CI_PIPELINE_ID
-    url: "${TUNNEL_URL}"
   artifacts:
     reports:
       dotenv: devinci.env
