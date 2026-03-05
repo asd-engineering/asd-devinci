@@ -1,0 +1,65 @@
+name: ASD DevInCi
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner OS'
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+      interface:
+        description: 'Interface'
+        default: 'ttyd'
+        type: choice
+        options:
+          - ttyd
+          - codeserver
+      shell:
+        description: 'Shell'
+        default: 'bash'
+        type: choice
+        options:
+          - bash
+          - zsh
+          - powershell
+      username:
+        description: 'Username'
+        default: 'asd'
+      password:
+        description: 'Password'
+        default: 'devinci'
+      region:
+        description: 'Tunnel server region'
+        default: ''
+      asd-version:
+        description: 'ASD CLI version'
+        default: 'latest'
+
+concurrency:
+  group: devinci-${{ github.actor }}
+  cancel-in-progress: false
+
+jobs:
+  devinci:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        id: devinci
+        with:
+          api-key: ${{ secrets.ASD_API_KEY }}
+          interface: ${{ inputs.interface }}
+          shell: ${{ inputs.shell }}
+          username: ${{ inputs.username }}
+          password: ${{ inputs.password }}
+          region: ${{ inputs.region }}
+          asd-version: ${{ inputs.asd-version }}
