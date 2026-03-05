@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: asd-engineering/asd-devinci@v1
+      - uses: ./
         id: devinci
         with:
           api-key: ${{ secrets.ASD_API_KEY }}
