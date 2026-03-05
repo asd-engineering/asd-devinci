@@ -64,7 +64,7 @@ asd-devinci/
 ### GitLab CI/CD
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       tunnel-name: debug-$CI_PIPELINE_ID

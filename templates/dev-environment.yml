@@ -68,7 +68,7 @@ spec:
       description: 'Pipeline stage for the DevInCi job'
     component-path:
       type: string
-      default: 'asd-engineering/asd-devinci'
+      default: 'accelerated-software-development/devinci'
       description: 'GitLab project path for the component repo (override for forks)'
 ---
 dev-environment:

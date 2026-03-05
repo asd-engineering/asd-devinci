@@ -67,7 +67,7 @@ DevInCi is available as a [GitLab CI/CD Component](https://docs.gitlab.com/ee/ci
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       tunnel-name: debug-$CI_PIPELINE_ID
 ```
@@ -76,7 +76,7 @@ include:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       tunnel-name: debug-$CI_PIPELINE_ID
@@ -87,7 +87,7 @@ include:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       interface: codeserver
@@ -100,7 +100,7 @@ By default the component uses the `deploy` stage. Override with:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       stage: build
       tunnel-name: debug-$CI_PIPELINE_ID
@@ -127,7 +127,7 @@ include:
 | `asd-version` | ASD CLI release tag | `latest` | Both |
 | `api-endpoint` | ASD API endpoint | `https://api.asd.host` | Both |
 | `stage` | Pipeline stage for the DevInCi job | `deploy` | GitLab only |
-| `component-path` | GitLab project path (override for forks) | `asd-engineering/asd-devinci` | GitLab only |
+| `component-path` | GitLab project path (override for forks) | `accelerated-software-development/devinci` | GitLab only |
 
 ## Outputs
 
@@ -259,7 +259,7 @@ test:
     - npm test
 
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       tunnel-name: debug-$CI_PIPELINE_ID
@@ -274,7 +274,7 @@ dev-environment:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       interface: codeserver
@@ -346,7 +346,7 @@ Use `@1` for the latest compatible version:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+  - component: gitlab.com/accelerated-software-development/devinci/dev-environment@1
 ```
 
 ## License
