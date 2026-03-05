@@ -2,9 +2,24 @@ name: Test Dispatch
 
 on:
   workflow_dispatch:
+    inputs:
+      username:
+        description: 'Username'
+        default: 'asd'
+      password:
+        description: 'Password'
+        default: 'devinci'
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
     steps:
-      - run: echo "dispatch works"
+      - uses: actions/checkout@v4
+      - uses: ./
+        with:
+          api-key: ${{ secrets.ASD_API_KEY }}
+          username: ${{ inputs.username }}
+          password: ${{ inputs.password }}
