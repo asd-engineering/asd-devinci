@@ -149,15 +149,15 @@ done
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   PORT="${ASD_CODESERVER_PORT:-}"
-  # Fallback: parse from "Using ASD_CODESERVER_PORT=XXXXX" in start output
+  # Fallback: parse port from start output (matches "ASD_CODESERVER_PORT=N" or "port N")
   if [ -z "$PORT" ]; then
-    PORT=$(echo "$START_OUTPUT" | grep -oP 'ASD_CODESERVER_PORT=\K\d+' || true)
+    PORT=$(echo "$START_OUTPUT" | grep -oP '(ASD_CODESERVER_PORT=|code-server port |on http://127\.0\.0\.1:)\K\d+' | tail -1 || true)
   fi
 else
   PORT="${ASD_TTYD_PORT:-}"
-  # Fallback: parse from "Using ASD_TTYD_PORT=XXXXX" in start output
+  # Fallback: parse port from start output (matches "ASD_TTYD_PORT=N" or "port N")
   if [ -z "$PORT" ]; then
-    PORT=$(echo "$START_OUTPUT" | grep -oP 'ASD_TTYD_PORT=\K\d+' || true)
+    PORT=$(echo "$START_OUTPUT" | grep -oP '(ASD_TTYD_PORT=|ttyd port |on http://127\.0\.0\.1:)\K\d+' | tail -1 || true)
   fi
 fi
 
