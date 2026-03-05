@@ -1,0 +1,22 @@
+name: DevInCi Terminal
+
+on:
+  workflow_dispatch:
+    inputs:
+      ttl:
+        description: 'Session duration (minutes)'
+        default: '15'
+
+jobs:
+  terminal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start DevInCi
+        id: devinci
+        uses: ./
+        with:
+          api-key: ${{ secrets.ASD_API_KEY }}
+          tunnel-name: debug-${{ github.run_id }}
+          ttl-minutes: ${{ github.event.inputs.ttl }}
