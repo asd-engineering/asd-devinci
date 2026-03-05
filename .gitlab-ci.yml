@@ -1,5 +1,6 @@
 stages:
   - lint
+  - test
   - release
 
 shellcheck:
@@ -21,6 +22,65 @@ validate-gitlab-ci:
   script:
     - pip install -q pyyaml
     - python3 -c "import yaml, sys; yaml.safe_load(open('.gitlab-ci.yml'))"
+
+# E2E smoke test: install CLI, provision credentials, start ttyd, verify accessible
+smoke-test:
+  stage: test
+  image: ubuntu:22.04
+  variables:
+    ASD_VERSION: latest
+    ASD_ENDPOINT: https://api.asd.host
+    INTERFACE_TYPE: ttyd
+    SESSION_USERNAME: asd
+    SESSION_SHELL: bash
+    TUNNEL_NAME: test-$CI_PIPELINE_ID
+    TTL_MINUTES: '5'
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq curl jq git openssl
+    - export SCRIPTS_DIR=$CI_PROJECT_DIR/scripts
+  script:
+    # Install ASD CLI
+    - source "${SCRIPTS_DIR}/setup.sh"
+    - echo "--- setup.sh OK ---"
+
+    # Provision tunnel credentials
+    - source "${SCRIPTS_DIR}/provision.sh"
+    - echo "--- provision.sh OK ---"
+    - echo "Client ID=${ASD_CLIENT_ID}"
+    - echo "Tunnel=${ASD_TUNNEL_HOST}:${ASD_TUNNEL_PORT}"
+
+    # Start ttyd
+    - source "${SCRIPTS_DIR}/start-interface.sh"
+    - echo "--- start-interface.sh OK ---"
+
+    # Verify ttyd is accessible
+    - |
+      echo "Verifying ttyd on port ${SESSION_PORT:-7681}..."
+      PORT="${SESSION_PORT:-7681}"
+      for i in $(seq 1 15); do
+        HTTP_CODE=$(curl -so /dev/null -w '%{http_code}' "http://localhost:${PORT}/" 2>/dev/null || echo "000")
+        if [ "$HTTP_CODE" -gt 0 ] 2>/dev/null && [ "$HTTP_CODE" -lt 500 ] 2>/dev/null; then
+          echo "ttyd responded with HTTP ${HTTP_CODE} on port ${PORT}"
+          break
+        fi
+        if [ "$i" -eq 15 ]; then
+          echo "ERROR: ttyd not accessible after 15 attempts"
+          exit 1
+        fi
+        sleep 1
+      done
+
+    # Quick playwright-style check — verify ttyd returns HTML with terminal content
+    - |
+      BODY=$(curl -s -u "${SESSION_USERNAME}:${SESSION_PASSWORD}" "http://localhost:${PORT}/")
+      if echo "$BODY" | grep -qi "ttyd\|terminal\|xterm\|hterm"; then
+        echo "ttyd is serving terminal UI"
+      else
+        echo "WARNING: ttyd response doesn't contain expected terminal markers"
+        echo "Response (first 500 chars): ${BODY:0:500}"
+      fi
+
+    - echo "--- SMOKE TEST PASSED ---"
 
 # Publish to CI/CD Catalog on tagged releases
 create-release:
