@@ -1,34 +1,78 @@
-name: DevInCi Terminal
+name: ASD DevInCi
 
 on:
   workflow_dispatch:
     inputs:
-      ttl:
-        description: 'Session duration (minutes)'
-        default: '15'
-      interface:
-        description: 'Interface type'
-        default: 'ttyd'
+      runner:
+        description: 'Runner OS'
+        required: false
+        default: 'ubuntu-latest'
         type: choice
         options:
-          - ttyd
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+      interface:
+        description: 'Interface'
+        required: false
+        default: 'codeserver'
+        type: choice
+        options:
+          - terminal
           - codeserver
+      shell:
+        description: 'Shell'
+        required: false
+        default: 'bash'
+        type: choice
+        options:
+          - bash
+          - zsh
+          - powershell
+      username:
+        description: 'Username'
+        required: true
+        type: string
       password:
-        description: 'Session password'
-        default: 'devinci'
+        description: 'Password'
+        required: true
+        type: string
+      region:
+        description: 'Tunnel server region'
+        required: false
+        default: 'default'
+        type: choice
+        options:
+          - default
+          - eu-west
+          - us-east
+      asd-version:
+        description: 'ASD CLI version'
+        required: false
+        default: 'latest'
+        type: string
+
+concurrency:
+  group: devinci-${{ github.actor }}
+  cancel-in-progress: false
 
 jobs:
-  terminal:
-    runs-on: ubuntu-latest
+  devinci:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      deployments: write
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start DevInCi
+      - uses: asd-engineering/asd-devinci@v1
         id: devinci
-        uses: ./
         with:
           api-key: ${{ secrets.ASD_API_KEY }}
-          tunnel-name: debug-${{ github.run_id }}
-          ttl-minutes: ${{ github.event.inputs.ttl }}
-          interface: ${{ github.event.inputs.interface }}
-          password: ${{ github.event.inputs.password }}
+          interface: ${{ inputs.interface == 'terminal' && 'ttyd' || inputs.interface }}
+          shell: ${{ inputs.shell }}
+          username: ${{ inputs.username }}
+          password: ${{ inputs.password }}
+          region: ${{ inputs.region }}
+          asd-version: ${{ inputs.asd-version }}
