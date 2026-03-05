@@ -20,9 +20,6 @@ asd-devinci/
 │   └── connect.sh                     # Connect tunnel + generate URLs
 ├── .github/workflows/ci.yml           # GitHub CI pipeline
 ├── .gitlab-ci.yml                     # GitLab CI pipeline
-├── tests/
-│   └── integration/
-│       └── prod-api.test.sh           # API integration tests
 ├── README.md
 ├── CLAUDE.md
 ├── LICENSE
@@ -67,7 +64,7 @@ asd-devinci/
 ### GitLab CI/CD
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       tunnel-name: debug-$CI_PIPELINE_ID
@@ -82,6 +79,7 @@ include:
 - `tunnel-name`: Custom subdomain prefix (default: short SHA)
 - `tunnel-host` / `tunnel-port`: Optional overrides (auto-detected from API)
 - `direct`: Use `--direct` flag for asd expose
-- `ttl-minutes`: Token TTL in minutes (5-60, API key mode only)
-- `keep-alive`: Keep session alive after setup (`true`/`false`)
+- `ttl-minutes`: Token TTL in minutes (0 = no expiry, API key mode only)
 - `asd-version`: ASD CLI release tag (default: `latest`)
+- `stage`: Pipeline stage (GitLab only, default: `deploy`)
+- `component-path`: GitLab project path (override for forks)

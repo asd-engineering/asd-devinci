@@ -67,7 +67,7 @@ DevInCi is available as a [GitLab CI/CD Component](https://docs.gitlab.com/ee/ci
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
     inputs:
       tunnel-name: debug-$CI_PIPELINE_ID
 ```
@@ -76,7 +76,7 @@ include:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       tunnel-name: debug-$CI_PIPELINE_ID
@@ -87,35 +87,53 @@ include:
 
 ```yaml
 include:
-  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@v1
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
     inputs:
       api-key: $ASD_API_KEY
       interface: codeserver
       tunnel-name: vscode-$CI_PIPELINE_ID
 ```
 
-> **Note:** On GitLab, mark your `ASD_API_KEY` and other secrets as "masked" in **Settings > CI/CD > Variables**. GitLab does not support runtime secret masking like GitHub Actions.
+#### Custom Stage
+
+By default the component uses the `deploy` stage. Override with:
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+    inputs:
+      stage: build
+      tunnel-name: debug-$CI_PIPELINE_ID
+```
+
+> **Note:** On GitLab, mark your `ASD_API_KEY` and other secrets as **masked** and **protected** in **Settings > CI/CD > Variables**. GitLab does not support runtime secret masking — the `ci_mask` function is a no-op on GitLab.
 
 ## Inputs
 
-| Input | Description | Default |
-|-------|-------------|---------|
-| `api-key` | ASD API key with `cicd:provision` scope | - |
-| `interface` | Interface type: `ttyd` (terminal) or `codeserver` (VS Code) | `ttyd` |
-| `shell` | Shell: `bash`, `zsh`, `powershell` | `bash` |
-| `username` | Basic auth username | `asd` |
-| `password` | Basic auth password (auto-generated if empty) | - |
-| `tunnel-name` | Subdomain prefix | Short SHA |
-| `tunnel-host` | Tunnel server hostname (auto-detected from API) | - |
-| `tunnel-port` | Tunnel server SSH port (auto-detected from API) | - |
-| `client-id` | Pre-existing ASD client ID (skips provisioning) | - |
-| `client-secret` | Pre-existing ASD client secret | - |
-| `direct` | Use `--direct` flag for asd expose | `false` |
-| `ttl-minutes` | Token TTL in minutes (0 = no expiry, API key mode only) | `0` |
-| `asd-version` | ASD CLI release tag | `latest` |
-| `api-endpoint` | ASD API endpoint | `https://api.asd.host` |
+| Input | Description | Default | Platforms |
+|-------|-------------|---------|-----------|
+| `api-key` | ASD API key with `cicd:provision` scope | - | Both |
+| `interface` | Interface type: `ttyd` (terminal) or `codeserver` (VS Code) | `ttyd` | Both |
+| `shell` | Shell: `bash`, `zsh`, `powershell` | `bash` | Both |
+| `username` | Basic auth username | `asd` | Both |
+| `password` | Basic auth password (auto-generated if empty) | - | Both |
+| `tunnel-name` | Subdomain prefix | Short SHA | Both |
+| `tunnel-host` | Tunnel server hostname (auto-detected from API) | - | Both |
+| `tunnel-port` | Tunnel server SSH port (auto-detected from API) | - | Both |
+| `client-id` | Pre-existing ASD client ID (skips provisioning) | - | Both |
+| `client-secret` | Pre-existing ASD client secret | - | Both |
+| `direct` | Use `--direct` flag for asd expose | `false` | Both |
+| `ttl-minutes` | Token TTL in minutes (0 = no expiry, API key mode only) | `0` | Both |
+| `asd-version` | ASD CLI release tag | `latest` | Both |
+| `api-endpoint` | ASD API endpoint | `https://api.asd.host` | Both |
+| `stage` | Pipeline stage for the DevInCi job | `deploy` | GitLab only |
+| `component-path` | GitLab project path (override for forks) | `asd-engineering/asd-devinci` | GitLab only |
 
 ## Outputs
+
+### GitHub Actions
+
+Outputs are available via `${{ steps.<id>.outputs.<name> }}`:
 
 | Output | Description |
 |--------|-------------|
@@ -124,6 +142,10 @@ include:
 | `tunnel-user` | Tunnel client ID |
 | `local-port` | Local service port |
 | `expires-at` | Token expiration (ISO 8601) |
+
+### GitLab CI/CD
+
+Outputs are written to a `devinci.env` [dotenv artifact](https://docs.gitlab.com/ee/ci/variables/#pass-an-environment-variable-to-another-job) for downstream jobs. The `TUNNEL_URL` variable is also used for the GitLab environment URL.
 
 ## Authentication Modes
 
@@ -163,7 +185,9 @@ URL construction adapts to ownership type:
 
 ## Examples
 
-### Debug a Failing Job
+### GitHub Actions
+
+#### Debug a Failing Job
 
 ```yaml
 name: Debug Workflow
@@ -190,7 +214,7 @@ jobs:
           tunnel-name: debug-${{ github.run_id }}
 ```
 
-### Interactive Development with VS Code
+#### Interactive Development with VS Code
 
 ```yaml
 name: Development Environment
@@ -220,13 +244,46 @@ jobs:
           ttl-minutes: ${{ github.event.inputs.ttl }}
 ```
 
-### Windows PowerShell Session
+### GitLab CI/CD
+
+#### Debug a Failing Pipeline
 
 ```yaml
-- uses: asd-engineering/asd-devinci@v1
-  with:
-    shell: powershell
-    tunnel-name: windows-debug
+stages:
+  - test
+  - debug
+
+test:
+  stage: test
+  script:
+    - npm test
+
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+    inputs:
+      api-key: $ASD_API_KEY
+      tunnel-name: debug-$CI_PIPELINE_ID
+      stage: debug
+
+dev-environment:
+  rules:
+    - when: on_failure
+```
+
+#### On-demand Development Environment
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
+    inputs:
+      api-key: $ASD_API_KEY
+      interface: codeserver
+      tunnel-name: dev-$CI_PIPELINE_ID
+
+dev-environment:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: manual
 ```
 
 ## Security
@@ -235,7 +292,8 @@ jobs:
 - URLs use HTTPS with TLS encryption
 - Tokens have configurable TTL (ephemeral mode uses short-lived tokens)
 - Basic auth protects the endpoint
-- All secrets are masked in logs
+- **GitHub Actions**: Secrets are masked in logs via `::add-mask::`
+- **GitLab CI/CD**: No runtime secret masking — mark CI/CD variables as "masked" in project settings
 
 ## Requirements
 
@@ -264,40 +322,31 @@ jobs:
 2. Check the local-port output
 3. Verify the interface started successfully
 
-## Testing
+### GitLab: Secrets visible in logs
 
-### Run Integration Tests Locally
+GitLab does not support runtime secret masking. Mark your CI/CD variables as **masked** in **Settings > CI/CD > Variables**. Variables marked as masked are redacted from job logs by the runner.
 
-```bash
-# Set API key (optional, some tests work without)
-export ASD_TEST_API_KEY="your-key-here"
+### GitLab: "git clone" fails in before_script
 
-# Run tests against production API
-tests/integration/prod-api.test.sh
-```
-
-### Trigger Test Workflow on GitHub
-
-```bash
-# Basic test (ephemeral mode only)
-gh workflow run test-devinci.yml
-
-# Full E2E tests (requires ASD_TEST_API_KEY secret)
-gh workflow run test-devinci.yml -f run_e2e=true
-```
-
-### Required Secrets for Testing
-
-| Secret | Description |
-|--------|-------------|
-| `ASD_TEST_API_KEY` | API key with `cicd:provision` scope |
+The component clones the script repository using `CI_JOB_TOKEN`. If the component project is private, ensure the consumer project has access via **Settings > CI/CD > Token Access**.
 
 ## Release
+
+### GitHub Actions
 
 Use `@v1` for the latest stable version:
 
 ```yaml
 - uses: asd-engineering/asd-devinci@v1
+```
+
+### GitLab CI/CD
+
+Use `@1` for the latest compatible version:
+
+```yaml
+include:
+  - component: gitlab.com/asd-engineering/asd-devinci/dev-environment@1
 ```
 
 ## License

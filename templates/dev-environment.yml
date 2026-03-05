@@ -1,4 +1,6 @@
 spec:
+  # Declare component context fields used in interpolation
+  component: [version]
   inputs:
     api-key:
       type: string
@@ -60,8 +62,17 @@ spec:
       type: string
       default: 'false'
       description: 'Use --direct flag for asd expose (bypass Caddy proxy)'
+    stage:
+      type: string
+      default: 'deploy'
+      description: 'Pipeline stage for the DevInCi job'
+    component-path:
+      type: string
+      default: 'asd-engineering/asd-devinci'
+      description: 'GitLab project path for the component repo (override for forks)'
 ---
 dev-environment:
+  stage: $[[ inputs.stage ]]
   image: ubuntu:22.04
   variables:
     ASD_VERSION: $[[ inputs.asd-version ]]
@@ -83,7 +94,7 @@ dev-environment:
     - apt-get update -qq && apt-get install -y -qq curl jq git openssl
     - |
       git clone --depth 1 --branch "$[[ component.version ]]" \
-        "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/$[[ component.project_path ]].git" /tmp/devinci
+        "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/$[[ inputs.component-path ]].git" /tmp/devinci
     - export SCRIPTS_DIR=/tmp/devinci/scripts
   script:
     # All scripts must be sourced (not bash-invoked) so that exports from
