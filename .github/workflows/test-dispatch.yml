@@ -3,6 +3,14 @@ name: Test Dispatch
 on:
   workflow_dispatch:
     inputs:
+      runner:
+        description: 'Runner OS'
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
       username:
         description: 'Username'
         default: 'asd'
@@ -10,9 +18,14 @@ on:
         description: 'Password'
         default: 'devinci'
 
+concurrency:
+  group: devinci-${{ github.actor }}
+  cancel-in-progress: false
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 360
     permissions:
       contents: read
       deployments: write
