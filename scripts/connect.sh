@@ -22,7 +22,11 @@ if [ -n "${CI_TOKEN:-}" ]; then
 fi
 
 # Get port and credentials from environment (set by previous steps via ci_set_env)
-PORT="${SESSION_PORT:-${ASD_TTYD_PORT:-7681}}"
+PORT="${SESSION_PORT:-${ASD_TTYD_PORT:-}}"
+if [ -z "${PORT}" ]; then
+  ci_error "SESSION_PORT / ASD_TTYD_PORT not set. start-interface step must set it."
+  exit 1
+fi
 USERNAME="${SESSION_USERNAME:-${ASD_TTYD_USERNAME:-asd}}"
 PASSWORD="${SESSION_PASSWORD:-${ASD_TTYD_PASSWORD:-}}"
 APPEND_USER_TO_SUBDOMAIN="${APPEND_USER_TO_SUBDOMAIN:-true}"

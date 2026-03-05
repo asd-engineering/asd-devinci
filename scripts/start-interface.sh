@@ -131,7 +131,8 @@ else
   fi
 fi
 
-# Source .env once for port values written by asd commands
+# Source .env for port values written by asd commands (asd ttyd start / asd code start
+# write ASD_TTYD_PORT / ASD_CODESERVER_PORT to .env — do NOT hardcode fallback ports)
 if [ -f ".env" ]; then
   set -a
   # shellcheck disable=SC1091
@@ -140,9 +141,14 @@ if [ -f ".env" ]; then
 fi
 
 if [ "${INTERFACE}" = "codeserver" ]; then
-  PORT="${ASD_CODESERVER_PORT:-8080}"
+  PORT="${ASD_CODESERVER_PORT:-}"
 else
-  PORT="${ASD_TTYD_PORT:-7681}"
+  PORT="${ASD_TTYD_PORT:-}"
+fi
+
+if [ -z "${PORT}" ]; then
+  ci_error "No port found for ${INTERFACE}. Check that asd ${INTERFACE} start wrote to .env"
+  exit 1
 fi
 echo "${INTERFACE} running on port ${PORT}"
 
