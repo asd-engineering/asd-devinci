@@ -1,3 +1,29 @@
+variables:
+  INTERFACE_TYPE:
+    value: 'ttyd'
+    description: 'Interface: ttyd (terminal) or codeserver (VS Code)'
+    options:
+      - ttyd
+      - codeserver
+  SESSION_SHELL:
+    value: 'bash'
+    description: 'Shell'
+    options:
+      - bash
+      - zsh
+  SESSION_USERNAME:
+    value: 'asd'
+    description: 'Username'
+  SESSION_PASSWORD:
+    value: 'devinci'
+    description: 'Password'
+  REGION:
+    value: ''
+    description: 'Tunnel server region (empty = auto)'
+  ASD_VERSION:
+    value: 'latest'
+    description: 'ASD CLI version'
+
 stages:
   - lint
   - test
@@ -6,12 +32,16 @@ stages:
 shellcheck:
   stage: lint
   image: koalaman/shellcheck-alpine:stable
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - shellcheck --severity=warning scripts/*.sh scripts/lib/*.sh
 
 validate-component:
   stage: lint
   image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - pip install -q pyyaml
     - python3 -c "import yaml, sys; list(yaml.safe_load_all(open('templates/dev-environment.yml')))"
@@ -19,12 +49,13 @@ validate-component:
 validate-gitlab-ci:
   stage: lint
   image: python:3.11-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
   script:
     - pip install -q pyyaml
     - python3 -c "import yaml, sys; yaml.safe_load(open('.gitlab-ci.yml'))"
 
-# On-demand DevInCi session — same as GitHub devinci.yml but local scripts
-# Trigger manually from GitLab UI: Run pipeline → set variables to override defaults
+# On-demand DevInCi session — mirrors GitHub devinci.yml using local scripts
 devinci:
   stage: test
   image: ubuntu:22.04
@@ -32,14 +63,8 @@ devinci:
     - if: $CI_PIPELINE_SOURCE == "web"
       when: manual
   variables:
-    ASD_VERSION: latest
     ASD_ENDPOINT: https://api.asd.host
-    INTERFACE_TYPE: ttyd
-    SESSION_USERNAME: asd
-    SESSION_PASSWORD: devinci
-    SESSION_SHELL: bash
     TUNNEL_NAME: devinci-$CI_PIPELINE_ID
-    REGION: ''
     TTL_MINUTES: '0'
     DIRECT_MODE: 'false'
   before_script:
