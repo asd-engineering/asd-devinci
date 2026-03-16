@@ -98,6 +98,15 @@ if asd env init 2>/dev/null; then
   echo "Environment synced via asd env init"
 fi
 
+# Preserve tunnel credentials set by provision.sh (sourcing .env may clobber them)
+_SAVE_ASD_CLIENT_ID="${ASD_CLIENT_ID:-}"
+_SAVE_ASD_CLIENT_SECRET="${ASD_CLIENT_SECRET:-}"
+_SAVE_ASD_TUNNEL_HOST="${ASD_TUNNEL_HOST:-}"
+_SAVE_ASD_TUNNEL_PORT="${ASD_TUNNEL_PORT:-}"
+_SAVE_ASD_EXPIRES_AT="${ASD_EXPIRES_AT:-}"
+_SAVE_APPEND_USER="${APPEND_USER_TO_SUBDOMAIN:-}"
+_SAVE_TUNNEL_OWNERSHIP="${TUNNEL_OWNERSHIP:-}"
+
 # Append credentials to .env (after asd env init so they take precedence)
 cat >> ".env" << EOF
 ASD_TTYD_USERNAME=${ASD_TTYD_USERNAME}
@@ -110,6 +119,15 @@ set -a
 # shellcheck disable=SC1091
 source .env
 set +a
+
+# Restore tunnel credentials (provision.sh values take precedence over .env)
+[ -n "$_SAVE_ASD_CLIENT_ID" ]      && export ASD_CLIENT_ID="$_SAVE_ASD_CLIENT_ID"
+[ -n "$_SAVE_ASD_CLIENT_SECRET" ]  && export ASD_CLIENT_SECRET="$_SAVE_ASD_CLIENT_SECRET"
+[ -n "$_SAVE_ASD_TUNNEL_HOST" ]    && export ASD_TUNNEL_HOST="$_SAVE_ASD_TUNNEL_HOST"
+[ -n "$_SAVE_ASD_TUNNEL_PORT" ]    && export ASD_TUNNEL_PORT="$_SAVE_ASD_TUNNEL_PORT"
+[ -n "$_SAVE_ASD_EXPIRES_AT" ]     && export ASD_EXPIRES_AT="$_SAVE_ASD_EXPIRES_AT"
+[ -n "$_SAVE_APPEND_USER" ]        && export APPEND_USER_TO_SUBDOMAIN="$_SAVE_APPEND_USER"
+[ -n "$_SAVE_TUNNEL_OWNERSHIP" ]   && export TUNNEL_OWNERSHIP="$_SAVE_TUNNEL_OWNERSHIP"
 
 if [ "${INTERFACE}" = "codeserver" ]; then
   # Start code-server
